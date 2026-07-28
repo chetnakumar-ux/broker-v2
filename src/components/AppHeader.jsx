@@ -23,6 +23,7 @@ import Group from '@mui/icons-material/Group';
 import SubscriptionsOutlined from '@mui/icons-material/SubscriptionsOutlined';
 
 import { apiFetch } from '../lib/api';
+import { logout } from '../utils/auth';
 import logo from '../assets/images/logo.webp';
 
 import SearchOverlay from './SearchOverlay';
@@ -33,9 +34,12 @@ const AUTH_USER_KEY = 'crm_user';
 const NAV_LINKS = [
     { label: 'Search & Vet', to: '/search-vet' },
     { label: 'Carriers', to: '/carriers' },
-    { label: 'Load Search', to: '/load-search' },
-    { label: 'Control Tower', to: '/control-tower' },
-    { label: 'Carrier Q/A', to: '/carrier-qa' },
+   {
+    label: 'Load Search',
+    to: '/load-search',
+    permission: 'book-assign-loads',
+  },
+    { label: 'Carrier Q/A', to: '/carrier-questions' },
     { label: 'Risk & Alerts', to: '/risk-alerts' },
     { label: 'DT-Pay', to: '/dt-pay' },
 ];
@@ -45,8 +49,20 @@ const PROFILE_LINKS = [
     { key: 'profile_shortlisting', label: 'Carriers Shortlisted', icon: <Checklist sx={{ fontSize: 18 }} />, to: '/profile/carriers/shortlisted' },
     // { key: 'profile_password', label: 'Password Update', icon: <Password sx={{ fontSize: 18 }} />, to: '/profile/password' },
     { key: 'scoring_weights', label: 'Scoring Weights', icon: <SettingsOutlined sx={{ fontSize: 18 }} />, to: '/profile/scoring-weights' },
-    { key: 'carrier_settings', label: 'Carrier Settings', icon: <DescriptionOutlined sx={{ fontSize: 18 }} />, to: '/settings/carrier', permission: 'manage_carrier_settings' },
-    { key: 'users', label: 'Users', icon: <Group sx={{ fontSize: 18 }} />, to: '/users', permission: 'manage_users_roles' },
+   {
+  key: 'carrier_settings',
+  label: 'Carrier Settings',
+  icon: <DescriptionOutlined sx={{ fontSize: 18 }} />,
+  to: '/settings/carrier',
+  permission: 'edit-carrier-agreements',
+},
+{
+  key: 'users',
+  label: 'Users',
+  icon: <Group sx={{ fontSize: 18 }} />,
+  to: '/users',
+  permission: ['manage-users-basic', 'manage-users-all'],
+},
     { key: 'pricing', label: 'Subscription', icon: <SubscriptionsOutlined sx={{ fontSize: 18 }} />, to: '/subscribe' },
 ];
 
@@ -94,28 +110,20 @@ export default function AppHeader() {
         return () => { cancelled = true; };
     }, [user]);
 
-    const handleLogout = () => {
-        localStorage.removeItem(AUTH_TOKEN_KEY);
-        localStorage.removeItem(AUTH_USER_KEY);
-        navigate('/');
-    };
+const handleLogout = () => {
+    logout(navigate);
+};
+const can = (permission, u) => {
+    if (!u) return false;
 
-    const isAdmin = (u) => !!u && (u.users_of === '' || u.users_of === null || u.users_of === undefined);
+    const permissions = u?.permissions || [];
 
-    const getPermissions = (u) => {
-        if (!u || !u.roles_row || !u.roles_row.permissions) return {};
-        try {
-            return JSON.parse(u.roles_row.permissions);
-        } catch (e) {
-            return {};
-        }
-    };
+    if (Array.isArray(permission)) {
+        return permission.some((p) => permissions.includes(p));
+    }
 
-    const can = (key, u) => {
-        if (isAdmin(u)) return true;
-        return getPermissions(u)[key] === true;
-    };
-
+    return permissions.includes(permission);
+};
     const getFilteredProfileLinks = () => {
         return PROFILE_LINKS.filter((_link) => {
             if (!_link.permission) return true;
@@ -140,11 +148,17 @@ export default function AppHeader() {
             {/* Nav — centered */}
             <Box className="flex-1 flex justify-center">
                 <nav className="flex items-center gap-1">
-                    {NAV_LINKS.map((item) => (
-                        <NavLink key={item.to} to={item.to} className={navLinkClass}>
-                            {item.label}
-                        </NavLink>
-                    ))}
+                 {NAV_LINKS
+  .filter((item) => !item.permission || can(item.permission, user))
+  .map((item) => (
+    <NavLink
+      key={item.to}
+      to={item.to}
+      className={navLinkClass}
+    >
+      {item.label}
+    </NavLink>
+))}
                 </nav>
             </Box>
 

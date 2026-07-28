@@ -7,6 +7,11 @@ import TrackShipmentStep2 from './pages/app/trackshipment/step2'
 import SearchVet from './pages/app/SearchVet/SearchVet'
 import RiskAlerts from './pages/app/riskalert/RiskAlerts'
 import LoadSearch from './pages/app/loadsearch/LoadSearch'
+// import CarrierSearch from './pages/app/carriers/CarrierSearch'
+
+import UsersList from './pages/app/users/UsersList'
+
+
 import Subscription from './pages/app/subscription/Subscription'
 
 import AppHeader from './components/AppHeader';
@@ -14,12 +19,15 @@ import RouteGuard from './RouteGuard'
 
 import { ToastContainer } from './components/ui/Toaster'
 import './App.css'
+import ProfileUpdate from './pages/app/profile/ProfileUpdate'
+import CarrierSettings from './pages/app/carrier-settings/CarrierSettings'
+import CarrierQuestions from './pages/app/carrier-questions/CarrierQuestion'
+import ScoringWeights from './pages/app/scoringweight/ScoringWeight'
 
 function App() {
   return (
     <BrowserRouter>
       <ToastContainer />
-
       <RouteGuard>
         <AppHeader /> 
 
@@ -37,7 +45,13 @@ function App() {
             <Route path="/load-search" element={<LoadSearch/>}/>
             <Route path="/search-vet" element={<SearchVet/>}/>
             <Route path ="/risk-alerts" element={<RiskAlerts/>}/>
+            <Route path="/users" element={<UsersList />} />
+            <Route path="/profile" element={<ProfileUpdate/>} />
+            <Route path ="/settings/carrier" element={<CarrierSettings/>} />
             <Route path="/subscribe" element={<Subscription />} />
+            <Route path ="/carrier-questions" element={<CarrierQuestions />}/>
+            {/* <Route path="/carriers/search" element={<CarrierSearch />} /> */}
+            <Route path ="/profile/scoring-weights" element={<ScoringWeights />}/>
 
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

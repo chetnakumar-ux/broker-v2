@@ -35,10 +35,10 @@ export default function StepSidebar({ currentStep = 1 }) {
                     )}
                   </div>
 
-                  <span className={`text-xs font-bold tracking-tight font-sans sm:block hidden ${isCurrent ? "text-[#112963]" : "text-[#93A7CD]"}`}>
+                  <span className={`text-xs font-bold tracking-tight  sm:block hidden ${isCurrent ? "text-[#112963]" : "text-[#93A7CD]"}`}>
                     {step.title}
                   </span>
-                  <span className={`text-[11px] font-bold font-sans sm:hidden ${isCurrent ? "text-blue-600" : "text-[#93A7CD]"}`}>
+                  <span className={`text-[11px] font-bold  sm:hidden ${isCurrent ? "text-blue-600" : "text-[#93A7CD]"}`}>
                     Step {step.number}
                   </span>
                 </div>
@@ -89,10 +89,10 @@ export default function StepSidebar({ currentStep = 1 }) {
                 </div>
 
                 <div className="flex flex-col pt-0.5">
-                  <span className={`text-[11px] font-bold uppercase tracking-wider font-sans ${isCurrent ? "text-blue-600" : "text-[#93A7CD]"}`}>
+                  <span className={`text-[11px] font-bold uppercase tracking-wider  ${isCurrent ? "text-blue-600" : "text-[#93A7CD]"}`}>
                     STEP {step.number}
                   </span>
-                  <span className={`mt-0.5 text-sm font-bold tracking-tight font-sans transition-colors duration-200 ${isCurrent ? "text-[#112963]" : "text-[#93A7CD]"}`}>
+                  <span className={`mt-0.5 text-sm font-bold tracking-tight  transition-colors duration-200 ${isCurrent ? "text-[#112963]" : "text-[#93A7CD]"}`}>
                     {step.title}
                   </span>
                 </div>

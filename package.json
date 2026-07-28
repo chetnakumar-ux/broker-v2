@@ -21,11 +21,14 @@
     "clsx": "^2.1.1",
     "date-fns": "^4.4.0",
     "dayjs": "^1.11.21",
+    "jodit": "^4.13.10",
+    "jodit-react": "^5.3.21",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "react-hook-form": "^7.81.0",
     "react-router-dom": "^7.18.1",
     "tailwindcss": "^4.3.2",
+    "uuid": "^14.0.1",
     "zustand": "^5.0.14"
   },
   "devDependencies": {

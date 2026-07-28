@@ -9,8 +9,6 @@ import UnfoldMoreIcon from '@mui/icons-material/UnfoldMore';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 
-// Adjust this relative path to wherever lib/api.js actually lives
-// relative to this file (same helper LoadSearch.jsx uses).
 import { apiFetch } from '../../../lib/api';
 
 import {
@@ -48,10 +46,6 @@ const AUTHORITY_FILTERS = [
     { value: 'I', label: 'Inactive' },
 ];
 
-// ---------- Sortable header cell ----------
-// Renders the header label with an arrow that reflects current sort
-// direction, or a neutral "unfold" icon when the column isn't sorted.
-// Clicking cycles: unsorted -> asc -> desc -> unsorted.
 function SortableHeader({ label, sortKey, sorting, onSortChange }) {
     const isActive = sorting.id === sortKey;
     const direction = isActive ? sorting.desc : null; // true = desc, false = asc, null = inactive
@@ -439,7 +433,7 @@ export default function SearchVet() {
     const placeholder = PLACEHOLDERS[searchType] || 'Search…';
 
     return (
-        <div className="min-h-screen bg-[#F4F5F1] px-8 py-5 md:px-14 font-sans">
+        <div className="min-h-screen bg-[#F4F5F1] px-8 py-5 md:px-14">
 
             <div className="mb-8">
                 <h1 className="text-[40px] font-semibold tracking-tight text-slate-900">Search &amp; Instant Vet</h1>

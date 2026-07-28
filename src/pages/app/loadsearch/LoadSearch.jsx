@@ -9,11 +9,15 @@ import FormatListBulletedIcon from "@mui/icons-material/FormatListBulleted";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import IconButton from "@mui/material/IconButton";
+import { Add } from "@mui/icons-material";
+
+import { useNavigate } from "react-router-dom";
 
 import { apiFetch } from "../../../lib/api";
 
 const SHIPMENTS_ENDPOINT = "/shipments";
 const TOTALS_ENDPOINT = "/app/shipment/load_search_total";
+
 
 const TRACKING_METHOD_LABELS = {
   driver_phone: "Driver's Cell Phone",
@@ -56,7 +60,7 @@ const StatusBadge = ({ status }) => {
   const matchedKey = Object.keys(STATUS_STYLES).find((k) => key.includes(k));
   const className = (matchedKey && STATUS_STYLES[matchedKey].className) || "bg-slate-100 text-slate-600";
   return (
-    <span className={`inline-flex items-center rounded-full px-3 py-1.5 text-xs font-bold font-sans ${className}`}>
+    <span className={`inline-flex items-center rounded-full px-3 py-1.5 text-xs font-bold  ${className}`}>
       {statusLabel(status)}
     </span>
   );
@@ -116,6 +120,9 @@ function useShipments(pageIndex, pageSize) {
 const columnHelper = createColumnHelper();
 
 export default function LoadSearch() {
+
+  const navigate = useNavigate();
+
   const [pageIndex, setPageIndex] = useState(0);
   const [pageSize, setPageSize] = useState(10);
 
@@ -126,34 +133,34 @@ export default function LoadSearch() {
       columnHelper.accessor("shipment_no", {
         header: "Shipment Number",
         cell: (info) => (
-          <span className="text-sm font-bold text-blue-700 font-sans">{info.getValue() || "—"}</span>
+          <span className="text-sm font-bold text-blue-700 ">{info.getValue() || "—"}</span>
         ),
       }),
       columnHelper.accessor((row) => row.carrier_name || row.carrier_mc || row.carrier_dot || "—", {
         id: "carrier",
         header: "Carrier",
-        cell: (info) => <span className="text-sm font-bold text-slate-800 font-sans">{info.getValue()}</span>,
+        cell: (info) => <span className="text-sm font-bold text-slate-800 ">{info.getValue()}</span>,
       }),
       columnHelper.accessor("pro_number", {
         header: "Pro # / Load ID",
-        cell: (info) => <span className="text-sm text-slate-700 font-sans">{info.getValue() || "—"}</span>,
+        cell: (info) => <span className="text-sm text-slate-700 ">{info.getValue() || "—"}</span>,
       }),
       columnHelper.accessor("tracking_method", {
         header: "Tracking Method",
         cell: (info) => (
-          <span className="text-sm text-slate-700 font-sans">
+          <span className="text-sm text-slate-700 ">
             {TRACKING_METHOD_LABELS[info.getValue()] || info.getValue() || "—"}
           </span>
         ),
       }),
       columnHelper.accessor("tracking_number", {
         header: "Tracking #",
-        cell: (info) => <span className="text-sm font-semibold text-slate-800 font-sans">{info.getValue() || "—"}</span>,
+        cell: (info) => <span className="text-sm font-semibold text-slate-800">{info.getValue() || "—"}</span>,
       }),
       columnHelper.accessor("driver_type", {
         header: "Driver Type",
         cell: (info) => (
-          <span className="text-sm text-slate-700 font-sans">
+          <span className="text-sm text-slate-700 ">
             {DRIVER_TYPE_LABELS[info.getValue()] || info.getValue() || "—"}
           </span>
         ),
@@ -186,15 +193,32 @@ export default function LoadSearch() {
   const rangeEnd = Math.min(total, (pageIndex + 1) * pageSize);
 
   return (
-    <div className="min-h-screen bg-[#F4F5F1] px-8 py-5 md:px-14 font-sans">
-      <div className="mb-8">
-        <h1 className="text-[40px] font-semibold tracking-tight text-slate-900">Load Search</h1>
-        <p className="mt-2 max-w-2xl text-[15px] leading-relaxed text-slate-500">
-          Monitor and manage all active shipment lifecycles with real-time driver authorization and status tracking.
-        </p>
-      </div>
+    <div className="min-h-screen bg-[#F4F5F1] px-8 py-5 md:px-14 ">
+   <div className="mb-8 flex items-start justify-between">
+  <div>
+    <h1 className="text-[40px] font-semibold tracking-tight text-slate-900">
+      Load Search
+    </h1>
+
+    <p className="mt-2 max-w-2xl text-[15px] leading-relaxed text-slate-500">
+      Monitor and manage all active shipment lifecycles with real-time driver authorization and status tracking.
+    </p>
+  </div>
+
+  {/* Right Side */}
+<button
+  onClick={() => navigate("/trackshipment/step1")}
+  className="mt-6 flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-6 py-4 text-[15px] font-semibold text-slate-900 shadow-sm hover:bg-slate-50"
+>
+  <Add sx={{ fontSize: 20 }} />
+  New Tracking
+</button>
+</div>
 
       <div className="mb-6 flex flex-wrap items-center justify-end gap-4">
+
+
+
         <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
           <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
             <FormatListBulletedIcon sx={{ fontSize: 18 }} />

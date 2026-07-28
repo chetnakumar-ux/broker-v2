@@ -165,25 +165,25 @@ export default function RiskAlerts() {
             columnHelper.accessor('type', {
                 header: 'Type',
                 cell: (info) => (
-                    <span className="text-sm font-bold text-slate-800 font-sans">{info.getValue()}</span>
+                    <span className="text-sm font-bold text-slate-800">{info.getValue()}</span>
                 ),
             }),
             columnHelper.accessor('carrier_load', {
                 header: 'Carrier / Load',
                 cell: (info) => (
-                    <span className="text-sm text-slate-700 font-sans">{info.getValue()}</span>
+                    <span className="text-sm text-slate-700">{info.getValue()}</span>
                 ),
             }),
             columnHelper.accessor('detected_by', {
                 header: 'Detected By',
                 cell: (info) => (
-                    <span className="text-sm text-slate-500 font-sans">{info.getValue()}</span>
+                    <span className="text-sm text-slate-500 ">{info.getValue()}</span>
                 ),
             }),
             columnHelper.accessor('added_on_formatted', {
                 header: 'When',
                 cell: (info) => (
-                    <span className="text-sm text-slate-500 font-sans">{info.getValue()}</span>
+                    <span className="text-sm text-slate-500">{info.getValue()}</span>
                 ),
             }),
             columnHelper.display({
@@ -223,7 +223,7 @@ export default function RiskAlerts() {
     const rangeEnd = total === 0 ? 0 : rangeStart + visibleRowCount - 1;
 
     return (
-        <div className="min-h-screen bg-[#F4F5F1] px-8 py-5 md:px-14 font-sans">
+        <div className="min-h-screen bg-[#F4F5F1] px-8 py-5 md:px-14 ">
 
             <div className="mb-6">
                 <h1 className="text-[40px] font-semibold tracking-tight text-slate-900">Risk &amp; Alerts</h1>

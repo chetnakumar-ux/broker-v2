@@ -1,28 +1,25 @@
 import React, { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useForm, useFieldArray, Controller } from "react-hook-form";
 import { create } from "zustand";
 
 import { apiFetch } from "../../../lib/api";
 import { toast } from "../../../components/ui/Toaster";
-
+import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp";
 import StepSidebar from "./StepSidebar";
 
 import IconButton from "@mui/material/IconButton";
 import CloseIcon from "@mui/icons-material/Close";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
-import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp";
 import SearchIcon from "@mui/icons-material/Search";
 import CalendarTodayOutlinedIcon from "@mui/icons-material/CalendarTodayOutlined";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 
-
-
 const TRACKING_METHODS = [
   { value: "driver_phone", label: "Driver's Cell Phone" },
   { value: "eld", label: "ELD / Telematics" },
-  { value: "gps", label: "Trailer GPS" },
+  // { value: "gps", label: "Trailer GPS" },
 ];
 
 const DRIVER_TYPES = [
@@ -39,6 +36,9 @@ const COUNTRY_CODES = [
   { code: "MX", dial: "+52", label: "Mexico" },
 ];
 
+// NOTE: TRACK_DURATIONS and INTERVALS were only used by the "Send Updates To"
+// rows, which have been removed from the UI below (see commented section).
+// Keeping the constants here (unused) in case that section is restored later.
 const TRACK_DURATIONS = [
   { value: "track for 1 day", label: "Track for 1 day" },
   { value: "track for 2 days", label: "Track for 2 days" },
@@ -68,29 +68,31 @@ export const BLANK_STEP1_VALUES = {
   reuseTemplate: "scratch",
 
   proNumber: "",
+  trackingNumber: "",
 
   carrierName: "",
   carrierMc: "",
   carrierDot: "",
   carrierPhone: "",
-  carrierExtension: "",
 
   trackingMethod: "driver_phone",
-  countryCode: "US",
-  trackingNumber: "",
+
+  countryCode1: "US",
+  driverPhone1: "",
+  countryCode2: "US",
+  driverPhone2: "",
+  driverType: "owner_operator_leased",
 
   truckNumber: "",
   trailerNumber: "",
-
-  driverPhone1: "",
-  driverPhone2: "",
-  driverType: "owner_operator_leased",
 
   teamLoad: false,
 
   dispatcherName: "",
   dispatcherEmail: "",
 
+  // Kept for backward compatibility with the payload shape / template
+  // mapping even though the "Send Updates To" rows are hidden from the UI.
   updates: [
     { date: "", time: "", duration: "", interval: "" },
   ],
@@ -131,13 +133,13 @@ function useCarrierOptions() {
         const list = Array.isArray(data)
           ? data
           : Array.isArray(data?.data)
-          ? data.data
-          : Array.isArray(data?.records)
-          ? data.records
-          : [];
+            ? data.data
+            : Array.isArray(data?.records)
+              ? data.records
+              : [];
         setCarriers(list);
       })
-      .catch(() => {})
+      .catch(() => { })
       .finally(() => {
         if (!cancelled) setLoading(false);
       });
@@ -164,13 +166,13 @@ function useApiOptions(endpoint) {
         const list = Array.isArray(data)
           ? data
           : Array.isArray(data?.results)
-          ? data.results
-          : Array.isArray(data?.data)
-          ? data.data
-          : [];
+            ? data.results
+            : Array.isArray(data?.data)
+              ? data.data
+              : [];
         setOptions(list);
       })
-      .catch(() => {})
+      .catch(() => { })
       .finally(() => {
         if (!cancelled) setLoading(false);
       });
@@ -210,9 +212,8 @@ const CarrierStatusBadge = ({ carrier }) => {
 
   return (
     <span
-      className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold font-sans ${
-        verified ? "bg-green-50 text-green-600" : "bg-yellow-50 text-yellow-700"
-      }`}
+      className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold  ${verified ? "bg-green-50 text-green-600" : "bg-yellow-50 text-yellow-700"
+        }`}
     >
       <span className={`h-1.5 w-1.5 rounded-full ${verified ? "bg-green-500" : "bg-yellow-400"}`} />
       {verified ? "Stripe Verified" : "Pending Verification"}
@@ -221,25 +222,25 @@ const CarrierStatusBadge = ({ carrier }) => {
 };
 
 const FieldLabel = ({ children, required }) => (
-  <label className="mb-2 block text-sm font-semibold text-slate-800 font-sans">
+  <label className="mb-2 block text-sm font-semibold text-slate-800 ">
     {children}
     {required ? <span className="ml-0.5 text-red-500">*</span> : null}
   </label>
 );
 
 const inputClass =
-  "w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 placeholder:text-slate-400 shadow-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 font-sans";
+  "w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 placeholder:text-slate-400 shadow-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 ";
 
 const selectClass = inputClass + " appearance-none pr-9";
 
 const SectionHeading = ({ children }) => (
-  <h3 className="mb-4 border-b border-slate-200 pb-2 text-xs font-bold tracking-widest text-blue-600 font-sans">
+  <h3 className="mb-4 border-b border-slate-200 pb-2 text-xs font-bold tracking-widest text-blue-600 ">
     {children}
   </h3>
 );
 
 const ErrorText = ({ children }) =>
-  children ? <p className="mt-1.5 text-xs text-red-500 font-sans">{children}</p> : null;
+  children ? <p className="mt-1.5 text-xs text-red-500 ">{children}</p> : null;
 
 const ChevronDown = () => (
   <KeyboardArrowDownIcon
@@ -282,8 +283,7 @@ function CustomDropdown({
         onClick={() => setOpen((v) => !v)}
         className={
           selectClass +
-          ` flex items-center text-left disabled:opacity-60 ${
-            hasError ? "border-red-400 focus:border-red-400 focus:ring-red-100" : ""
+          ` flex items-center text-left disabled:opacity-60 ${hasError ? "border-red-400 focus:border-red-400 focus:ring-red-100" : ""
           }`
         }
       >
@@ -307,12 +307,12 @@ function CustomDropdown({
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Search by name or DOT #…"
-                className="w-full text-sm text-slate-700 outline-none placeholder:text-slate-400 font-sans"
+                className="w-full text-sm text-slate-700 outline-none placeholder:text-slate-400 "
               />
             </div>
           )}
           <div className="max-h-56 overflow-y-auto py-1">
-            {filtered.length === 0 && <p className="px-4 py-3 text-sm text-slate-400 font-sans">No matches</p>}
+            {filtered.length === 0 && <p className="px-4 py-3 text-sm text-slate-400 ">No matches</p>}
             {filtered.map((opt) => {
               const isSelected = opt.value === value;
               return (
@@ -324,9 +324,8 @@ function CustomDropdown({
                     setOpen(false);
                     setQuery("");
                   }}
-                  className={`flex w-full items-center px-4 py-2.5 text-left text-sm font-medium transition font-sans ${
-                    isSelected ? "bg-blue-600 text-white" : "text-slate-700 hover:bg-slate-50"
-                  }`}
+                  className={`flex w-full items-center px-4 py-2.5 text-left text-sm font-medium transition  ${isSelected ? "bg-blue-600 text-white" : "text-slate-700 hover:bg-slate-50"
+                    }`}
                 >
                   {opt.render ? opt.render(isSelected) : opt.label}
                 </button>
@@ -388,8 +387,7 @@ function CustomDatePicker({ value, onChange, placeholder = "Select date", hasErr
         onClick={() => setOpen((v) => !v)}
         className={
           inputClass +
-          ` flex items-center justify-between text-left ${
-            hasError ? "border-red-400 focus:border-red-400 focus:ring-red-100" : ""
+          ` flex items-center justify-between text-left ${hasError ? "border-red-400 focus:border-red-400 focus:ring-red-100" : ""
           }`
         }
       >
@@ -405,12 +403,12 @@ function CustomDatePicker({ value, onChange, placeholder = "Select date", hasErr
             <IconButton size="small" onClick={goPrev} sx={{ color: "#94a3b8" }}>
               <ChevronLeftIcon fontSize="small" />
             </IconButton>
-            <p className="text-sm font-bold text-slate-800 font-sans">{monthLabel}</p>
+            <p className="text-sm font-bold text-slate-800 ">{monthLabel}</p>
             <IconButton size="small" onClick={goNext} sx={{ color: "#94a3b8" }}>
               <ChevronRightIcon fontSize="small" />
             </IconButton>
           </div>
-          <div className="mb-1 grid grid-cols-7 gap-1 text-center text-[11px] font-semibold text-slate-400 font-sans">
+          <div className="mb-1 grid grid-cols-7 gap-1 text-center text-[11px] font-semibold text-slate-400 ">
             {WEEKDAYS.map((w) => <span key={w}>{w}</span>)}
           </div>
           <div className="grid grid-cols-7 gap-1">
@@ -423,9 +421,8 @@ function CustomDatePicker({ value, onChange, placeholder = "Select date", hasErr
                   type="button"
                   key={iso}
                   onClick={() => pick(day)}
-                  className={`h-8 rounded-lg text-sm font-medium transition font-sans ${
-                    isSelected ? "bg-blue-600 text-white" : "text-slate-700 hover:bg-slate-50"
-                  }`}
+                  className={`h-8 rounded-lg text-sm font-medium transition  ${isSelected ? "bg-blue-600 text-white" : "text-slate-700 hover:bg-slate-50"
+                    }`}
                 >
                   {day}
                 </button>
@@ -447,13 +444,13 @@ function to12Hour(value24) {
   const hour = h % 12 === 0 ? 12 : h % 12;
   return { hour, minute: m, period };
 }
-
+ 
 function to24HourString(hour, minute, period) {
   let h = hour % 12;
   if (period === "PM") h += 12;
   return `${pad(h)}:${pad(minute)}`;
 }
-
+ 
 function CustomTimePicker({ value, onChange, hasError = false }) {
   const { hour, minute, period } = to12Hour(value);
 
@@ -490,7 +487,7 @@ function CustomTimePicker({ value, onChange, hasError = false }) {
 
   const spinnerBtnClass = "flex justify-center text-slate-400 hover:text-blue-600 transition leading-none";
   const segmentClass =
-    "w-6 border-none bg-transparent text-center text-sm font-semibold text-slate-800 font-sans outline-none";
+    "w-6 border-none bg-transparent text-center text-sm font-semibold text-slate-800  outline-none";
 
   return (
     <div
@@ -537,7 +534,7 @@ function CustomTimePicker({ value, onChange, hasError = false }) {
       <button
         type="button"
         onClick={togglePeriod}
-        className="ml-auto rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-50 hover:border-blue-300 transition font-sans"
+        className="ml-auto rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-50 hover:border-blue-300 transition "
       >
         {period}
       </button>
@@ -551,21 +548,182 @@ function buildDateTime(date, time) {
   return `${date} ${time}${seconds}`;
 }
 
-// NEW: split a "YYYY-MM-DD HH:mm:ss" string back into { date, time } for the form
 function splitDateTime(dateTime) {
   if (!dateTime) return { date: "", time: "" };
   const [date, time] = String(dateTime).split(" ");
   return { date: date || "", time: time ? time.slice(0, 5) : "" };
 }
 
+// Gmail-style email chips: the underlying react-hook-form value stays a
+// simple comma-separated string (so buildPayload / templates don't change),
+// but the UI renders/edits it as removable pill chips with a colored
+// initial-letter avatar, matching the "chetnakumar2020@gmail.com ✕" style.
+function emailStringToList(rawValue) {
+  return (rawValue || "")
+    .split(",")
+    .map((e) => e.trim())
+    .filter(Boolean);
+}
+
+function emailListToString(list) {
+  return list.join(", ");
+}
+
+const CHIP_AVATAR_COLORS = [
+  "bg-rose-600",
+  "bg-blue-600",
+  "bg-emerald-600",
+  "bg-amber-600",
+  "bg-violet-600",
+  "bg-cyan-600",
+  "bg-pink-600",
+  "bg-indigo-600",
+];
+
+function chipColorForEmail(email) {
+  let hash = 0;
+  for (let i = 0; i < email.length; i += 1) {
+    hash = email.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return CHIP_AVATAR_COLORS[Math.abs(hash) % CHIP_AVATAR_COLORS.length];
+}
+
+function EmailChipsInput({ value, onChange, onBlur, hasError }) {
+  const [draft, setDraft] = useState("");
+  // Local validation message for whatever is currently sitting in the draft
+  // box (e.g. "abc" with no @, or a duplicate). This is what was missing
+  // before: an invalid entry used to be silently wiped (setDraft("")) even
+  // though it was never turned into a chip, which then made the *next*
+  // Backspace remove the last real chip instead of just clearing the typo.
+  const [draftError, setDraftError] = useState("");
+  // Chrome's saved-address autofill ignores autocomplete="off" on fields it
+  // recognizes as "email"-like, and fills every such field in the form
+  // (this is what was pulling the same address into Dispatcher Email).
+  // Keeping the field read-only until the user actually focuses it stops
+  // Chrome from offering/applying that autofill at all.
+  const [locked, setLocked] = useState(true);
+  const emails = emailStringToList(value);
+
+  const commitDraft = () => {
+    const candidate = draft.trim().replace(/,+$/, "");
+
+ 
+    if (!candidate) {
+      setDraft("");
+      setDraftError("");
+      return;
+    }
+
+ 
+    if (!EMAIL_PATTERN.test(candidate)) {
+      // Keep the text in the box (don't clear it) so the user can see and
+      // fix what they typed instead of it silently vanishing.
+      setDraftError("Enter a valid email address");
+      return;
+    }
+
+ 
+    if (emails.includes(candidate)) {
+      setDraftError("That email is already added");
+      return;
+    }
+
+ 
+    onChange(emailListToString([...emails, candidate]));
+    setDraft("");
+    setDraftError("");
+  };
+
+  const removeEmail = (email) => {
+    onChange(emailListToString(emails.filter((e) => e !== email)));
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter" || e.key === "," || e.key === " ") {
+      if (draft.trim() !== "") e.preventDefault();
+      commitDraft();
+    } else if (e.key === "Backspace" && draft === "" && emails.length > 0) {
+      removeEmail(emails[emails.length - 1]);
+    }
+  };
+
+  return (
+    <div>
+      <div
+        className={`flex min-h-[88px] w-full flex-wrap items-start content-start gap-2 rounded-xl border bg-white px-3 py-2.5 shadow-sm transition focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100  ${hasError || draftError ? "border-red-400" : "border-slate-200"
+          }`}
+      >
+        {emails.map((email) => (
+          <span
+            key={email}
+            className="flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 py-1 pl-1 pr-2 text-sm font-medium text-slate-700"
+          >
+            <span
+              className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white ${chipColorForEmail(email)}`}
+            >
+              {email[0].toUpperCase()}
+            </span>
+            {email}
+            <button
+              type="button"
+              onClick={() => removeEmail(email)}
+              className="ml-0.5 flex h-4 w-4 items-center justify-center text-slate-400 hover:text-slate-600"
+              aria-label={`Remove ${email}`}
+            >
+              <CloseIcon sx={{ fontSize: 16 }} />
+            </button>
+          </span>
+        ))}
+        <input
+          type="text"
+          value={draft}
+          onChange={(e) => {
+            setDraft(e.target.value);
+            // Clear the stale error the moment the user starts editing again.
+            if (draftError) setDraftError("");
+          }}
+          onKeyDown={handleKeyDown}
+          onFocus={() => setLocked(false)}
+          onBlur={() => {
+            commitDraft();
+            setLocked(true);
+            onBlur();
+          }}
+          readOnly={locked}
+          placeholder={emails.length === 0 ? "name@company.com, name2@company.com" : ""}
+          // Prevent the browser's saved-address autofill (which was cross-filling
+          // the Broker Dispatcher "Email" field) from attaching to this input.
+          name="email_updates_draft_no_autofill"
+          autoComplete="off"
+          autoCorrect="off"
+          autoCapitalize="off"
+          spellCheck="false"
+          role="presentation"
+          data-lpignore="true"
+          data-1p-ignore="true"
+          data-form-type="other"
+          className="mt-0.5 min-w-[160px] flex-1 cursor-text border-none bg-transparent text-sm text-slate-800 outline-none placeholder:text-slate-400 "
+        />
+      </div>
+      <ErrorText>{draftError}</ErrorText>
+    </div>
+  );
+}
+
 export default function TrackShipmentStep1() {
   const navigate = useNavigate();
+   const [searchParams, setSearchParams] = useSearchParams();
   const [carriers, carriersLoading] = useCarrierOptions();
   // NEW: template list now comes from /shipment-templates
   const [templates, , templatesLoading] = useApiOptions(TEMPLATE_LIST_URL);
   // NEW: track the in-flight "load template details" request separately
   // from the plain templates-list loading state above.
   const [templateApplying, setTemplateApplying] = useState(false);
+  // Chrome ties Dispatcher Email + Email Updates To together for its saved-
+  // address autofill; locking this field until it's actually focused stops
+  // that autofill from firing here too (see EmailChipsInput for the same
+  // pattern).
+  const [dispatcherEmailLocked, setDispatcherEmailLocked] = useState(true);
 
   const step1Draft = useShipmentDraftStore((s) => s.step1);
   const setStep1Draft = useShipmentDraftStore((s) => s.setStep1);
@@ -585,6 +743,9 @@ export default function TrackShipmentStep1() {
     defaultValues: step1Draft,
   });
 
+  // Kept in place (even though the "Send Updates To" rows are hidden from
+  // the UI below) so BLANK_STEP1_VALUES.updates / buildPayload keep working
+  // without further changes.
   const { fields, append, remove } = useFieldArray({ control, name: "updates" });
 
   useEffect(() => {
@@ -593,6 +754,19 @@ export default function TrackShipmentStep1() {
     });
     return () => subscription.unsubscribe();
   }, [watch, setStep1Draft]);
+
+  useEffect(() => {
+   if (searchParams.get("incomplete") === "1") {
+    toast.error({
+      title: "Finish step 1 first",
+       message: "Please complete and save the shipment summary before continuing.",
+       duration: 5000,
+     });
+     searchParams.delete("incomplete");
+     setSearchParams(searchParams, { replace: true });
+   }
+   // eslint-disable-next-line react-hooks/exhaustive-deps
+ }, []);
 
   const mapApiTemplateToFormValues = (apiData) => {
     if (!apiData) return {};
@@ -604,14 +778,14 @@ export default function TrackShipmentStep1() {
     const updatesFromApi =
       Array.isArray(apiData.send_updates_to) && apiData.send_updates_to.length > 0
         ? apiData.send_updates_to.map((u) => {
-            const { date, time } = splitDateTime(u.date_time);
-            return {
-              date,
-              time,
-              duration: u.tracking_days || "",
-              interval: u.interval || "",
-            };
-          })
+          const { date, time } = splitDateTime(u.date_time);
+          return {
+            date,
+            time,
+            duration: u.tracking_days || "",
+            interval: u.interval || "",
+          };
+        })
         : [{ date: "", time: "", duration: "", interval: "" }];
 
     return {
@@ -621,16 +795,16 @@ export default function TrackShipmentStep1() {
       carrierMc: apiData.carrier_mc || "",
       carrierDot: apiData.carrier_dot || "",
       carrierPhone: apiData.carrier_phone || "",
-      carrierExtension: apiData.carrier_extension || "",
 
       trackingMethod: apiData.tracking_method || "driver_phone",
-      countryCode: COUNTRY_CODES.find((c) => c.dial === apiData.country_code)?.code || "US",
       trackingNumber: apiData.tracking_number || "",
 
       truckNumber: apiData.truck_number || "",
       trailerNumber: apiData.trailer_number || "",
 
+      countryCode1: COUNTRY_CODES.find((c) => c.dial === apiData.country_code_1)?.code || "US",
       driverPhone1: apiData.driver_phone_1 || "",
+      countryCode2: COUNTRY_CODES.find((c) => c.dial === apiData.country_code)?.code || "US",
       driverPhone2: apiData.driver_phone_2 || "",
       driverType: apiData.driver_type || "company_driver",
 
@@ -701,16 +875,16 @@ export default function TrackShipmentStep1() {
       carrier_mc: data.carrierMc,
       carrier_dot: selectedCarrier?.dot_number || data.carrierDot,
       carrier_phone: data.carrierPhone,
-      carrier_extension: data.carrierExtension || "",
 
       tracking_method: data.trackingMethod,
-      country_code: COUNTRY_CODES.find((c) => c.code === data.countryCode)?.dial || "+1",
       tracking_number: data.trackingNumber,
 
       truck_number: data.truckNumber,
       trailer_number: data.trailerNumber,
 
+      country_code_1: COUNTRY_CODES.find((c) => c.code === data.countryCode1)?.dial || "+1",
       driver_phone_1: data.driverPhone1,
+      country_code: COUNTRY_CODES.find((c) => c.code === data.countryCode2)?.dial || "+1",
       driver_phone_2: data.driverPhone2 || "",
 
       driver_type: data.driverType,
@@ -720,6 +894,8 @@ export default function TrackShipmentStep1() {
       broker_dispatcher_name: data.dispatcherName || "",
       broker_dispatcher_email: data.dispatcherEmail || "",
 
+      // "Send Updates To" rows are hidden from the UI, so this will just
+      // reflect whatever is in the (now hidden) default "updates" state.
       send_updates_to: data.updates.map((update) => ({
         date_time: buildDateTime(update.date, update.time),
         tracking_days: update.duration || "",
@@ -771,7 +947,7 @@ export default function TrackShipmentStep1() {
       });
   };
 
-  
+
   const carrierOptions = carriers.map((c) => {
     const verified = !!c.stripe_verified_at;
     return {
@@ -807,459 +983,498 @@ export default function TrackShipmentStep1() {
   }));
 
   return (
-    <div className="flex min-h-screen bg-[#EBF1FC] font-sans">
-      <StepSidebar currentStep={1} />
+      <div className="flex min-h-screen bg-[#EBF1FC] ">
+        <StepSidebar currentStep={1} />
 
-      <div className="flex-1 px-8 py-10 md:px-14">
-        <div className="mb-4 border-b border-[#E2EAF4] pb-6">
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#93A7CD]">STEP 1</p>
-          <h1 className="mt-1 text-[32px] font-extrabold tracking-tight text-[#112963]">Shipment Summary</h1>
-          <p className="mt-2 text-[15px] font-medium leading-relaxed text-[#7085A8]">
-            Fill in the load details below, then continue to the Trip Sheet.
-          </p>
-        </div>
+        <div className="flex-1 px-8 py-10 md:px-14">
+          <div className="mb-4 border-b border-[#E2EAF4] pb-6">
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#93A7CD]">STEP 1</p>
+            <h1 className="mt-1 text-[32px] font-extrabold tracking-tight text-[#112963]">Shipment Summary</h1>
+            <p className="mt-2 text-[15px] font-medium leading-relaxed text-[#7085A8]">
+              Fill in the load details below, then continue to the Trip Sheet.
+            </p>
+          </div>
 
-        <form onSubmit={handleSubmit(onSubmit, onInvalid)} className="mt-2 max-w-4xl pb-28">
-          <div className="mb-10 flex items-center gap-2">
-            <FieldLabel>Reuse from template</FieldLabel>
-            <div className="relative">
-              <Controller
-                control={control}
-                name="reuseTemplate"
-                render={({ field }) => (
-                  <select
-                    {...field}
-                    className={selectClass}
-                    disabled={templatesLoading || templateApplying}
-                    onChange={(e) => {
-                      field.onChange(e);
-                      onApplyTemplate(e.target.value);
-                    }}
-                  >
-                    <option value="scratch">Start from scratch</option>
-                    {templatesLoading && <option disabled>Loading…</option>}
-                    {templates.map((t) => (
-                      <option key={t.tracking_number} value={t.tracking_number}>
-                        {t.template_name || t.tracking_number}
-                      </option>
-                    ))}
-                  </select>
+          <form onSubmit={handleSubmit(onSubmit, onInvalid)} className="mt-2 max-w-4xl pb-28">
+            <div className="mb-10 flex items-center gap-2">
+              <FieldLabel>Reuse from template</FieldLabel>
+              <div className="relative">
+                <Controller
+                  control={control}
+                  name="reuseTemplate"
+                  render={({ field }) => (
+                    <select
+                      {...field}
+                      className={selectClass}
+                      disabled={templatesLoading || templateApplying}
+                      onChange={(e) => {
+                        field.onChange(e);
+                        onApplyTemplate(e.target.value);
+                      }}
+                    >
+                      <option value="scratch">Start from scratch</option>
+                      {templatesLoading && <option disabled>Loading…</option>}
+                      {templates.map((t) => (
+                        <option key={t.tracking_number} value={t.tracking_number}>
+                          {t.template_name || t.tracking_number}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                />
+                <ChevronDown />
+                {templateApplying && (
+                  <span className="ml-2 align-middle text-xs text-slate-400 ">Loading template…</span>
                 )}
-              />
-              <ChevronDown />
-              {templateApplying && (
-                <span className="ml-2 align-middle text-xs text-slate-400 font-sans">Loading template…</span>
-              )}
+              </div>
             </div>
-          </div>
 
-          <SectionHeading>Load</SectionHeading>
-          <div className="mb-10 grid grid-cols-1 gap-6 sm:grid-cols-2">
-            <div>
-              <FieldLabel required>Pro # / Load ID</FieldLabel>
-              <input
-                className={inputClass}
-                placeholder="e.g. PRO123456"
-                {...register("proNumber", { required: "Load ID is required" })}
-              />
-              <ErrorText>{errors.proNumber?.message}</ErrorText>
+            <SectionHeading>Load</SectionHeading>
+            {/* CHANGED: "Dollar Traq No." (tracking number) now sits right after Pro # / Load ID */}
+            <div className="mb-10 grid grid-cols-1 gap-6 sm:grid-cols-2">
+              <div>
+                <FieldLabel required>Pro # / Load ID</FieldLabel>
+                <input
+                  className={inputClass}
+                  placeholder="e.g. PRO123456"
+                  {...register("proNumber", { required: "Load ID is required" })}
+                />
+                <ErrorText>{errors.proNumber?.message}</ErrorText>
+              </div>
+              <div>
+                <FieldLabel required>Dollar Traq No.</FieldLabel>
+                <input
+                  className={inputClass}
+                  placeholder="TRK123456789"
+                  {...register("trackingNumber", { required: "Dollar Traq No. is required" })}
+                />
+                <ErrorText>{errors.trackingNumber?.message}</ErrorText>
+              </div>
             </div>
-          </div>
 
-          <SectionHeading>Carrier</SectionHeading>
-          <div className="mb-6">
-            <div className="mb-2 flex items-center justify-between">
-              <FieldLabel required>Carrier Name</FieldLabel>
+            <SectionHeading>Carrier</SectionHeading>
+            <div className="mb-6">
+              <div className="mb-2 flex items-center justify-between">
+                <FieldLabel required>Carrier Name</FieldLabel>
+                <Controller
+                  control={control}
+                  name="carrierName"
+                  render={({ field: { value } }) => {
+                    const selectedCarrier = carriers.find((c) => c.row_id === value);
+                    return <CarrierStatusBadge carrier={selectedCarrier} />;
+                  }}
+                />
+              </div>
               <Controller
                 control={control}
                 name="carrierName"
-                render={({ field: { value } }) => {
-                  const selectedCarrier = carriers.find((c) => c.row_id === value);
-                  return <CarrierStatusBadge carrier={selectedCarrier} />;
-                }}
-              />
-            </div>
-            <Controller
-              control={control}
-              name="carrierName"
-              rules={{ required: "Carrier name is required" }}
-              render={({ field: { value, onChange }, fieldState }) => (
-                <>
-                  <CustomDropdown
-                    value={value}
-                    onChange={(val) => {
-                      onChange(val);
-                      // Auto-fill the DOT # field from the selected carrier
-                      const selected = carriers.find((c) => c.row_id === val);
-                      if (selected) {
-                        setValue("carrierDot", selected.dot_number || "", { shouldValidate: true });
-                      }
-                    }}
-                    options={carrierOptions}
-                    loading={carriersLoading}
-                    searchable
-                    placeholder="Select a carrier…"
-                    hasError={!!fieldState.error}
-                  />
-                  <ErrorText>{fieldState.error?.message}</ErrorText>
-                </>
-              )}
-            />
-          </div>
-          <div className="mb-10 grid grid-cols-1 gap-6 sm:grid-cols-3">
-            <div>
-              <FieldLabel required>Carrier MC #</FieldLabel>
-              <input
-                className={inputClass}
-                placeholder="MC123456"
-                {...register("carrierMc", { required: "Carrier MC # is required" })}
-              />
-              <ErrorText>{errors.carrierMc?.message}</ErrorText>
-            </div>
-            <div>
-              <FieldLabel required>Carrier DOT #</FieldLabel>
-              <input
-                className={inputClass}
-                placeholder="DOT987654"
-                {...register("carrierDot", { required: "Carrier DOT # is required" })}
-              />
-              <ErrorText>{errors.carrierDot?.message}</ErrorText>
-            </div>
-            <div>
-              <FieldLabel>Ext</FieldLabel>
-              <input className={inputClass} placeholder="Optional" {...register("carrierExtension")} />
-            </div>
-          </div>
-          <div className="mb-10 grid grid-cols-1 gap-6 sm:grid-cols-2">
-            <div>
-              <FieldLabel required>Carrier Phone</FieldLabel>
-              <input
-                className={inputClass}
-                placeholder="9876543210"
-                {...register("carrierPhone", {
-                  required: "Carrier phone is required",
-                  pattern: { value: PHONE_PATTERN, message: "Enter a valid phone number" },
-                })}
-              />
-              <ErrorText>{errors.carrierPhone?.message}</ErrorText>
-            </div>
-          </div>
-
-          <SectionHeading>Tracking</SectionHeading>
-          <div className="mb-10 grid grid-cols-1 gap-6 sm:grid-cols-3">
-            <div>
-              <FieldLabel>Tracking Method</FieldLabel>
-              <div className="relative">
-                <select className={selectClass} {...register("trackingMethod")}>
-                  {TRACKING_METHODS.map((m) => (
-                    <option key={m.value} value={m.value}>{m.label}</option>
-                  ))}
-                </select>
-                <ChevronDown />
-              </div>
-            </div>
-            <div>
-              <FieldLabel>Country Code</FieldLabel>
-              <Controller
-                control={control}
-                name="countryCode"
-                render={({ field: { value, onChange } }) => (
-                  <CustomDropdown
-                    value={value}
-                    onChange={onChange}
-                    options={countryCodeOptions}
-                    placeholder="Select country…"
-                  />
+                rules={{ required: "Carrier name is required" }}
+                render={({ field: { value, onChange }, fieldState }) => (
+                  <>
+                    <CustomDropdown
+                      value={value}
+                      onChange={(val) => {
+                        onChange(val);
+                        // Auto-fill the DOT # field from the selected carrier
+                        const selected = carriers.find((c) => c.row_id === val);
+                        if (selected) {
+                          setValue("carrierDot", selected.dot_number || "", { shouldValidate: true });
+                           setValue("carrierMc", selected.mc_number || "", { shouldValidate: true });
+                        }
+                      }}
+                      options={carrierOptions}
+                      loading={carriersLoading}
+                      searchable
+                      placeholder="Select a carrier…"
+                      hasError={!!fieldState.error}
+                    />
+                    <ErrorText>{fieldState.error?.message}</ErrorText>
+                  </>
                 )}
               />
             </div>
-            <div>
-              <FieldLabel required>Tracking Full Number</FieldLabel>
-              <input
-                className={inputClass}
-                placeholder="TRK123456789"
-                {...register("trackingNumber", { required: "Tracking number is required" })}
-              />
-              <ErrorText>{errors.trackingNumber?.message}</ErrorText>
-            </div>
-          </div>
-
-          <SectionHeading>Driver &amp; Equipment</SectionHeading>
-          <div className="mb-6 grid grid-cols-1 gap-6 sm:grid-cols-2">
-            <div>
-              <FieldLabel required>Truck Number</FieldLabel>
-              <input
-                className={inputClass}
-                placeholder="e.g. 4471"
-                {...register("truckNumber", { required: "Truck number is required" })}
-              />
-              <ErrorText>{errors.truckNumber?.message}</ErrorText>
-            </div>
-            <div>
-              <FieldLabel required>Trailer Number</FieldLabel>
-              <input
-                className={inputClass}
-                placeholder="e.g. TR-208"
-                {...register("trailerNumber", { required: "Trailer number is required" })}
-              />
-              <ErrorText>{errors.trailerNumber?.message}</ErrorText>
-            </div>
-          </div>
-
-          <div className="mb-8 grid grid-cols-1 gap-6 sm:grid-cols-2">
-            <div>
-              <FieldLabel required>Driver Phone 1</FieldLabel>
-              <input
-                className={inputClass}
-                placeholder="Primary"
-                {...register("driverPhone1", {
-                  required: "Driver phone is required",
-                  pattern: { value: PHONE_PATTERN, message: "Enter a valid phone number" },
-                })}
-              />
-              <ErrorText>{errors.driverPhone1?.message}</ErrorText>
-            </div>
-            <div>
-              <FieldLabel>Driver Phone 2</FieldLabel>
-              <input
-                className={inputClass}
-                placeholder="Optional"
-                {...register("driverPhone2", {
-                  validate: (v) => v === "" || PHONE_PATTERN.test(v) || "Enter a valid phone number",
-                })}
-              />
-              <ErrorText>{errors.driverPhone2?.message}</ErrorText>
-            </div>
-          </div>
-
-          <div className="mb-4">
-            <FieldLabel>Driver Type</FieldLabel>
-            <Controller
-              control={control}
-              name="driverType"
-              render={({ field: { value, onChange } }) => (
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  {DRIVER_TYPES.map((type) => {
-                    const isSelected = value === type.value;
-                    return (
-                      <button
-                        type="button"
-                        key={type.value}
-                        onClick={() => onChange(type.value)}
-                        className={`flex items-center gap-3 rounded-xl border-2 px-4 py-3.5 text-left text-sm font-semibold transition font-sans ${
-                          isSelected ? "border-slate-900 text-slate-900" : "border-slate-200 text-slate-700 hover:border-slate-300"
-                        }`}
-                      >
-                        <span
-                          className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 ${
-                            isSelected ? "border-slate-900" : "border-slate-300"
-                          }`}
-                        >
-                          {isSelected && <span className="h-2.5 w-2.5 rounded-full bg-slate-900" />}
-                        </span>
-                        {type.label}
-                      </button>
-                    );
+            {/* CHANGED: "Ext" removed; Carrier Phone now sits in that spot */}
+            <div className="mb-10 grid grid-cols-1 gap-6 sm:grid-cols-3">
+              <div>
+                <FieldLabel required>Carrier MC #</FieldLabel>
+                <input
+                  className={inputClass}
+                  placeholder="MC123456"
+                  {...register("carrierMc", { required: "Carrier MC # is required" })}
+                />
+                <ErrorText>{errors.carrierMc?.message}</ErrorText>
+              </div>
+              <div>
+                <FieldLabel required>Carrier DOT #</FieldLabel>
+                <input
+                  className={inputClass}
+                  placeholder="DOT987654"
+                  {...register("carrierDot", { required: "Carrier DOT # is required" })}
+                />
+                <ErrorText>{errors.carrierDot?.message}</ErrorText>
+              </div>
+              <div>
+                <FieldLabel required>Carrier Phone</FieldLabel>
+                <input
+                  className={inputClass}
+                  placeholder="9876543210"
+                  {...register("carrierPhone", {
+                    required: "Carrier phone is required",
+                    pattern: { value: PHONE_PATTERN, message: "Enter a valid phone number" },
                   })}
-                </div>
-              )}
-            />
-          </div>
-
-          <div className="mb-10">
-            <label className="flex cursor-pointer items-center gap-3">
-              <input
-                type="checkbox"
-                className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                {...register("teamLoad")}
-              />
-              <span className="text-sm font-semibold text-slate-800 font-sans">This load is a team load</span>
-            </label>
-          </div>
-
-          <SectionHeading>Broker Dispatcher Information</SectionHeading>
-          <div className="mb-10 grid grid-cols-1 gap-6 sm:grid-cols-2">
-            <div>
-              <FieldLabel>Dispatcher Name</FieldLabel>
-              <input className={inputClass} placeholder="Enter dispatcher name" {...register("dispatcherName")} />
+                />
+                <ErrorText>{errors.carrierPhone?.message}</ErrorText>
+              </div>
             </div>
-            <div>
-              <FieldLabel>Email</FieldLabel>
-              <input
-                className={inputClass}
-                placeholder="dispatcher@company.com"
-                {...register("dispatcherEmail", {
-                  validate: (v) => v === "" || EMAIL_PATTERN.test(v) || "Enter a valid email address",
-                })}
-              />
-              <ErrorText>{errors.dispatcherEmail?.message}</ErrorText>
-            </div>
-          </div>
 
-          <SectionHeading>Schedule &amp; Updates</SectionHeading>
-
-          <div className="mb-2">
-            <FieldLabel>Send Updates To</FieldLabel>
-          </div>
-          <div className="grid grid-cols-1 items-start gap-3 sm:grid-cols-[1.1fr_0.9fr_1.2fr_1.2fr_auto]">
-            <span className="text-xs font-semibold font-sans">Date</span>
-            <span className="text-xs font-semibold  font-sans">Time</span>
-            <span className="text-xs font-semibold font-sans">Duration</span>
-            <span className="text-xs font-semibold font-sans">Interval</span>
-            <span />
-          </div>
-          <div className="space-y-3">
-            {fields.map((row, index) => (
-              <div
-                key={row.id}
-                className="grid grid-cols-1 items-start gap-3 sm:grid-cols-[1.1fr_0.9fr_1.2fr_1.2fr_auto]"
-              >
-                <div>
-                  <span className="mb-1 block text-xs font-semibold text-slate-500 font-sans sm:hidden">Date</span>
-                  <Controller
-                    control={control}
-                    name={`updates.${index}.date`}
-                    rules={index === 0 ? { required: "Date is required" } : undefined}
-                    render={({ field: { value, onChange }, fieldState }) => (
-                      <>
-                        <CustomDatePicker value={value} onChange={onChange} hasError={!!fieldState.error} />
-                        <ErrorText>{fieldState.error?.message}</ErrorText>
-                      </>
-                    )}
-                  />
-                </div>
-                <div>
-                  <span className="mb-1 block text-xs font-semibold text-slate-500 font-sans sm:hidden">Time</span>
-                  <Controller
-                    control={control}
-                    name={`updates.${index}.time`}
-                    rules={index === 0 ? { required: "Time is required" } : undefined}
-                    render={({ field: { value, onChange }, fieldState }) => (
-                      <>
-                        <CustomTimePicker value={value} onChange={onChange} hasError={!!fieldState.error} />
-                        <ErrorText>{fieldState.error?.message}</ErrorText>
-                      </>
-                    )}
-                  />
-                </div>
-                <div>
-                  <span className="mb-1 block text-xs font-semibold text-slate-500 font-sans sm:hidden">Duration</span>
-                  <div className="relative">
-                    <Controller
-                      control={control}
-                      name={`updates.${index}.duration`}
-                      render={({ field: { value, onChange } }) => (
-                        <select
-                          className={selectClass}
-                          value={value || ""}
-                          onChange={(e) => onChange(e.target.value)}
-                        >
-                          <option value="" disabled>Select duration…</option>
-                          {TRACK_DURATIONS.map((d) => (
-                            <option key={d.value} value={d.value}>{d.label}</option>
-                          ))}
-                        </select>
-                      )}
-                    />
-                    <ChevronDown />
-                  </div>
-                </div>
-                <div>
-                  <span className="mb-1 block text-xs font-semibold text-slate-500 font-sans sm:hidden">Interval</span>
-                  <div className="relative">
-                    <Controller
-                      control={control}
-                      name={`updates.${index}.interval`}
-                      render={({ field: { value, onChange } }) => (
-                        <select
-                          className={selectClass}
-                          value={value || ""}
-                          onChange={(e) => onChange(e.target.value)}
-                        >
-                          <option value="" disabled>Select interval…</option>
-                          {INTERVALS.map((i) => (
-                            <option key={i.value} value={i.value}>{i.label}</option>
-                          ))}
-                        </select>
-                      )}
-                    />
-                    <ChevronDown />
-                  </div>
-                </div>
-                <div className="flex h-[46px] items-center justify-self-start sm:justify-self-center">
-                  {index > 0 ? (
-                    <IconButton size="small" onClick={() => remove(index)} aria-label="Remove update row" sx={{ color: "#ef4444" }}>
-                      <CloseIcon fontSize="small" />
-                    </IconButton>
-                  ) : null}
+            <SectionHeading>Tracking</SectionHeading>
+            {/* CHANGED: Tracking Full Number moved up to the Load section (as "Dollar Traq No.");
+                Driver Phone 1 now takes its place here, with its own Country Code
+                (default US) right before it. */}
+            <div className="mb-10 grid grid-cols-1 gap-6 sm:grid-cols-3">
+              <div>
+                <FieldLabel>Tracking Method</FieldLabel>
+                <div className="relative">
+                  <select className={selectClass} {...register("trackingMethod")}>
+                    {TRACKING_METHODS.map((m) => (
+                      <option key={m.value} value={m.value}>{m.label}</option>
+                    ))}
+                  </select>
+                  <ChevronDown />
                 </div>
               </div>
-            ))}
-          </div>
+              <div>
+                <FieldLabel>Country Code</FieldLabel>
+                <Controller
+                  control={control}
+                  name="countryCode1"
+                  render={({ field: { value, onChange } }) => (
+                    <CustomDropdown
+                      value={value}
+                      onChange={onChange}
+                      options={countryCodeOptions}
+                      placeholder="Select country…"
+                    />
+                  )}
+                />
+              </div>
+              <div>
+                <FieldLabel required>Driver Phone 1</FieldLabel>
+                <input
+                  className={inputClass}
+                  placeholder="Primary"
+                  {...register("driverPhone1", {
+                    required: "Driver phone is required",
+                    pattern: { value: PHONE_PATTERN, message: "Enter a valid phone number" },
+                  })}
+                />
+                <ErrorText>{errors.driverPhone1?.message}</ErrorText>
+              </div>
+            </div>
 
-          <div className="mt-3 flex justify-end">
-            <button
-              type="button"
-              onClick={() => append({ date: "", time: "", duration: "", interval: "" })}
-              className="flex items-center gap-1.5 text-sm font-bold text-blue-600 hover:text-blue-700 font-sans"
-            >
-              <span className="text-lg leading-none">+</span> Add update
-            </button>
-          </div>
+            <SectionHeading>Driver &amp; Equipment</SectionHeading>
+            <div className="mb-6 grid grid-cols-1 gap-6 sm:grid-cols-2">
+              <div>
+                <FieldLabel required>Truck Number</FieldLabel>
+                <input
+                  className={inputClass}
+                  placeholder="e.g. 4471"
+                  {...register("truckNumber", { required: "Truck number is required" })}
+                />
+                <ErrorText>{errors.truckNumber?.message}</ErrorText>
+              </div>
+              <div>
+                <FieldLabel required>Trailer Number</FieldLabel>
+                <input
+                  className={inputClass}
+                  placeholder="e.g. TR-208"
+                  {...register("trailerNumber", { required: "Trailer number is required" })}
+                />
+                <ErrorText>{errors.trailerNumber?.message}</ErrorText>
+              </div>
+            </div>
 
-          <div className="mt-8 mb-8">
-            <FieldLabel>Email Updates To</FieldLabel>
-            <textarea
-              rows={3}
-              className={inputClass + " resize-y"}
-              placeholder="name@company.com, name2@company.com"
-              {...register("emailUpdatesTo", {
-                validate: (v) => v === "" || EMAIL_LIST_PATTERN.test(v) || "Enter one or more valid emails, separated by commas",
-              })}
-            />
-            <ErrorText>{errors.emailUpdatesTo?.message}</ErrorText>
-          </div>
+            {/* CHANGED: Country Code (default US) now appears right before Driver Phone 2 */}
+            <div className="mb-8 grid grid-cols-1 gap-6 sm:grid-cols-2">
+              <div>
+                <FieldLabel>Country Code</FieldLabel>
+                <Controller
+                  control={control}
+                  name="countryCode2"
+                  render={({ field: { value, onChange } }) => (
+                    <CustomDropdown
+                      value={value}
+                      onChange={onChange}
+                      options={countryCodeOptions}
+                      placeholder="Select country…"
+                    />
+                  )}
+                />
+              </div>
+              <div>
+                <FieldLabel>Driver Phone 2</FieldLabel>
+                <input
+                  className={inputClass}
+                  placeholder="Optional"
+                  {...register("driverPhone2", {
+                    validate: (v) => v === "" || PHONE_PATTERN.test(v) || "Enter a valid phone number",
+                  })}
+                />
+                <ErrorText>{errors.driverPhone2?.message}</ErrorText>
+              </div>
+            </div>
 
-          <div className="mb-4">
-            <label className="mb-2 block text-sm font-bold text-blue-600 font-sans">Notes</label>
-            <textarea
-              rows={4}
-              className={inputClass + " resize-y"}
-              placeholder="Type your message"
-              {...register("notes")}
-            />
-          </div>
-        </form>
-      </div>
-
-      <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-slate-200 bg-white/95 px-8 py-4 backdrop-blur md:px-14 font-sans">
-        <div className="ml-0 flex max-w-6xl items-center justify-between md:ml-[280px]">
-          <div className="flex items-center gap-4">
-            <span className="text-xs text-slate-400">
-              <span className="text-red-500">*</span> Required fields
-            </span>
-            <label className="flex cursor-pointer items-center gap-2">
-              <input
-                type="checkbox"
-                className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                {...register("saveAsTemplate")}
+            <div className="mb-4">
+              <FieldLabel>Driver Type</FieldLabel>
+              <Controller
+                control={control}
+                name="driverType"
+                render={({ field: { value, onChange } }) => (
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    {DRIVER_TYPES.map((type) => {
+                      const isSelected = value === type.value;
+                      return (
+                        <button
+                          type="button"
+                          key={type.value}
+                          onClick={() => onChange(type.value)}
+                          className={`flex items-center gap-3 rounded-xl border-2 px-4 py-3.5 text-left text-sm font-semibold transition  ${isSelected ? "border-slate-900 text-slate-900" : "border-slate-200 text-slate-700 hover:border-slate-300"
+                            }`}
+                        >
+                          <span
+                            className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 ${isSelected ? "border-slate-900" : "border-slate-300"
+                              }`}
+                          >
+                            {isSelected && <span className="h-2.5 w-2.5 rounded-full bg-slate-900" />}
+                          </span>
+                          {type.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               />
-              <span className="text-sm text-slate-600">Save as template</span>
-            </label>
-          </div>
+            </div>
 
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              disabled={isSubmitting}
-              onClick={handleSubmit(onSubmit, onInvalid)}
-              className="rounded-xl bg-slate-900 px-6 py-4 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-60"
-            >
-              {isSubmitting ? "Saving…" : "Continue to Trip Sheet →"}
-            </button>
+            <div className="mb-10">
+              <label className="flex cursor-pointer items-center gap-3">
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                  {...register("teamLoad")}
+                />
+                <span className="text-sm font-semibold text-slate-800 ">This load is a team load</span>
+              </label>
+            </div>
+
+            <SectionHeading>Broker Dispatcher Information</SectionHeading>
+            <div className="mb-10 grid grid-cols-1 gap-6 sm:grid-cols-2">
+              <div>
+                <FieldLabel>Dispatcher Name</FieldLabel>
+                <input className={inputClass} placeholder="Enter dispatcher name" {...register("dispatcherName")} />
+              </div>
+              <div>
+                <FieldLabel>Email</FieldLabel>
+                <input
+                  className={inputClass}
+                  placeholder="dispatcher@company.com"
+                  autoComplete="off"
+                  data-lpignore="true"
+                  data-1p-ignore="true"
+                  data-form-type="other"
+                  readOnly={dispatcherEmailLocked}
+                  onFocus={() => setDispatcherEmailLocked(false)}
+                  {...register("dispatcherEmail", {
+                    validate: (v) => v === "" || EMAIL_PATTERN.test(v) || "Enter a valid email address",
+                    onBlur: () => setDispatcherEmailLocked(true),
+                  })}
+                />
+                <ErrorText>{errors.dispatcherEmail?.message}</ErrorText>
+              </div>
+            </div>
+
+            <SectionHeading>Schedule &amp; Updates</SectionHeading>
+
+            {/* REMOVED: "Send Updates To" date/time/duration/interval rows.
+                Kept here (commented) in case this needs to come back later.
+
+            <div className="mb-2">
+              <FieldLabel>Send Updates To</FieldLabel>
+            </div>
+              <div className="grid grid-cols-1 items-start gap-3 sm:grid-cols-[1.1fr_0.9fr_1.2fr_1.2fr_auto]">
+              <span className="text-xs font-semibold ">Date</span>
+              <span className="text-xs font-semibold  ">Time</span>
+              <span className="text-xs font-semibold ">Duration</span>
+              <span className="text-xs font-semibold ">Interval</span>
+              <span />
+            </div>
+            <div className="space-y-3">
+              {fields.map((row, index) => (
+                <div
+                  key={row.id}
+                  className="grid grid-cols-1 items-start gap-3 sm:grid-cols-[1.1fr_0.9fr_1.2fr_1.2fr_auto]"
+                >
+                  <div>
+                    <span className="mb-1 block text-xs font-semibold text-slate-500  sm:hidden">Date</span>
+                    <Controller
+                      control={control}
+                      name={`updates.${index}.date`}
+                      rules={index === 0 ? { required: "Date is required" } : undefined}
+                      render={({ field: { value, onChange }, fieldState }) => (
+                        <>
+                          <CustomDatePicker value={value} onChange={onChange} hasError={!!fieldState.error} />
+                          <ErrorText>{fieldState.error?.message}</ErrorText>
+                        </>
+                      )}
+                    />
+                  </div>
+                  <div>
+                    <span className="mb-1 block text-xs font-semibold text-slate-500  sm:hidden">Time</span>
+                    <Controller
+                      control={control}
+                      name={`updates.${index}.time`}
+                      rules={index === 0 ? { required: "Time is required" } : undefined}
+                      render={({ field: { value, onChange }, fieldState }) => (
+                        <>
+                          <CustomTimePicker value={value} onChange={onChange} hasError={!!fieldState.error} />
+                          <ErrorText>{fieldState.error?.message}</ErrorText>
+                        </>
+                      )}
+                    />
+                  </div>
+                  <div>
+                    <span className="mb-1 block text-xs font-semibold text-slate-500  sm:hidden">Duration</span>
+                    <div className="relative">
+                      <Controller
+                        control={control}
+                        name={`updates.${index}.duration`}
+                        render={({ field: { value, onChange } }) => (
+                          <select
+                            className={selectClass}
+                            value={value || ""}
+                            onChange={(e) => onChange(e.target.value)}
+                          >
+                            <option value="" disabled>Select duration…</option>
+                            {TRACK_DURATIONS.map((d) => (
+                              <option key={d.value} value={d.value}>{d.label}</option>
+                            ))}
+                          </select>
+                        )}
+                      />
+                      <ChevronDown />
+                    </div>
+                  </div>
+                  <div>
+                    <span className="mb-1 block text-xs font-semibold text-slate-500  sm:hidden">Interval</span>
+                    <div className="relative">
+                      <Controller
+                        control={control}
+                        name={`updates.${index}.interval`}
+                        render={({ field: { value, onChange } }) => (
+                          <select
+                            className={selectClass}
+                            value={value || ""}
+                            onChange={(e) => onChange(e.target.value)}
+                          >
+                            <option value="" disabled>Select interval…</option>
+                            {INTERVALS.map((i) => (
+                              <option key={i.value} value={i.value}>{i.label}</option>
+                            ))}
+                          </select>
+                        )}
+                      />
+                      <ChevronDown />
+                    </div>
+                  </div>
+                  <div className="flex h-[46px] items-center justify-self-start sm:justify-self-center">
+                    {index > 0 ? (
+                      <IconButton size="small" onClick={() => remove(index)} aria-label="Remove update row" sx={{ color: "#ef4444" }}>
+                        <CloseIcon fontSize="small" />
+                      </IconButton>
+                    ) : null}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-3 flex justify-end">
+              <button
+                type="button"
+                onClick={() => append({ date: "", time: "", duration: "", interval: "" })}
+                className="flex items-center gap-1.5 text-sm font-bold text-blue-600 hover:text-blue-700 "
+              >
+                <span className="text-lg leading-none">+</span> Add update
+              </button>
+            </div>
+
+            */}
+
+            <div className="mt-8 mb-8">
+              <FieldLabel>Email Updates To</FieldLabel>
+              {/* CHANGED: Gmail-style chip UI — each valid email becomes a pill with a
+                  colored initial avatar and an ✕ to remove it (matches the reference
+                  screenshot). Press space, comma, or enter to turn what you typed
+                  into a chip; backspace on an empty input removes the last chip. */}
+              <Controller
+                control={control}
+                name="emailUpdatesTo"
+                rules={{
+                  validate: (v) => v === "" || EMAIL_LIST_PATTERN.test(v) || "Enter one or more valid emails, separated by commas",
+                }}
+                render={({ field: { value, onChange, onBlur }, fieldState }) => (
+                  <>
+                    <EmailChipsInput
+                      value={value}
+                      onChange={onChange}
+                      onBlur={onBlur}
+                      hasError={!!fieldState.error}
+                    />
+                    <ErrorText>{fieldState.error?.message}</ErrorText>
+                  </>
+                )}
+              />
+            </div>
+
+            <div className="mb-4">
+              <label className="mb-2 block text-sm font-bold text-blue-600 ">Notes</label>
+              <textarea
+                rows={4}
+                className={inputClass + " resize-y"}
+                placeholder="Type your message"
+                {...register("notes")}
+              />
+            </div>
+          </form>
+        </div>
+
+        <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-slate-200 bg-white/95 px-8 py-4 backdrop-blur md:px-14 ">
+          <div className="ml-0 flex max-w-6xl items-center justify-between md:ml-[280px]">
+            <div className="flex items-center gap-4">
+              <span className="text-xs text-slate-400">
+                <span className="text-red-500">*</span> Required fields
+              </span>
+              <label className="flex cursor-pointer items-center gap-2">
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                  {...register("saveAsTemplate")}
+                />
+                <span className="text-sm text-slate-600">Save as template</span>
+              </label>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                disabled={isSubmitting}
+                onClick={handleSubmit(onSubmit, onInvalid)}
+                className="rounded-xl bg-slate-900 px-6 py-4 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-60"
+              >
+                {isSubmitting ? "Saving…" : "Continue to Trip Sheet →"}
+              </button>
+            </div>
           </div>
         </div>
       </div>
-    </div>
   );
 }

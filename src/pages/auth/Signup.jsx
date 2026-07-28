@@ -229,18 +229,27 @@ const Signup = () => {
                         'SameSite=Lax',
                     ].join('; ');
                 }
-        
-                if (userData) {
-                    const normalizedUser = {
-                        ...userData,
-                        role: userData.role ? userData.role.toLowerCase() : 'employee',
-                        name: [userData.first_name, userData.last_name].filter(Boolean).join(' ') || userData.email,
-                    };
-                    localStorage.setItem('crm_user', JSON.stringify(normalizedUser));
-                    if (userData.company) {
-                        localStorage.setItem('crm_company', JSON.stringify(userData.company));
-                    }
-                }
+if (userData) {
+    let roleValue = 'employee';
+    if (userData.role) {
+        if (typeof userData.role === 'string') {
+            roleValue = userData.role.toLowerCase();
+        } else if (typeof userData.role === 'object') {
+            roleValue = (userData.role.slug || userData.role.name || 'employee').toLowerCase();
+        }
+    }
+
+    const normalizedUser = {
+        ...userData,
+        role: roleValue,                 // e.g. "owner_admin" — safe for role checks like ===
+        roleDetails: (userData.role && typeof userData.role === 'object') ? userData.role : null, // keep id/name/level if you need them elsewhere
+        name: [userData.first_name, userData.last_name].filter(Boolean).join(' ') || userData.email,
+    };
+    localStorage.setItem('crm_user', JSON.stringify(normalizedUser));
+    if (userData.company) {
+        localStorage.setItem('crm_company', JSON.stringify(userData.company));
+    }
+}
         
                 toast.success({
                     title: 'Account Created',

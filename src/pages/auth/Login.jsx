@@ -16,6 +16,7 @@ import ShieldOutlinedIcon from '@mui/icons-material/ShieldOutlined';
 
 import { toast } from '../../components/ui/Toaster';
 import { apiFetch } from '../../lib/api';
+import { getDeviceUUID } from '../../utils/deviceUuid';
 
 import logo from '../../assets/images/logo.webp';
 import image from '../../assets/images/image.png';
@@ -91,19 +92,6 @@ const RingDecoration = ({ className }) => (
 
 const validEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 
-const DEVICE_UUID_KEY = 'crm_device_uuid';
-
-function getDeviceUuid() {
-    let id = localStorage.getItem(DEVICE_UUID_KEY);
-    if (!id) {
-        id = (typeof crypto !== 'undefined' && crypto.randomUUID)
-            ? crypto.randomUUID()
-            : `${Date.now()}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`;
-        localStorage.setItem(DEVICE_UUID_KEY, id);
-    }
-    return id;
-}
-
 const OTP_SESSION_KEY = 'crm_otp_session';
 const OTP_EMAIL_KEY = 'crm_otp_email';
 
@@ -124,7 +112,7 @@ function clearOtpSession() {
     localStorage.removeItem(OTP_EMAIL_KEY);
 }
 
-const RESEND_COOLDOWN = 30; 
+const RESEND_COOLDOWN = 30;
 
 const OtpModal = ({ email, otpSession, rememberDevice, onClose, onVerified, onResend }) => {
     const [digits, setDigits] = useState(['', '', '', '', '', '']);
@@ -159,11 +147,12 @@ const OtpModal = ({ email, otpSession, rememberDevice, onClose, onVerified, onRe
                     otp_session: otpSession,
                     otp: code,
                     remember_device: rememberDevice,
+                    device_uuid: getDeviceUUID(),
                 }),
             });
 
             if (data && data.status) {
-                clearOtpSession(); 
+                clearOtpSession();
                 onVerified(data);
             } else {
                 setError((data && data.message) || 'Invalid code. Please try again.');
@@ -214,7 +203,7 @@ const OtpModal = ({ email, otpSession, rememberDevice, onClose, onVerified, onRe
             });
             return;
         }
-  
+
         const chars = value.split('');
         setDigits((prev) => {
             const next = [...prev];
@@ -281,7 +270,7 @@ const OtpModal = ({ email, otpSession, rememberDevice, onClose, onVerified, onRe
     };
 
     const handleClose = () => {
-        clearOtpSession(); 
+        clearOtpSession();
         onClose();
     };
 
@@ -366,6 +355,378 @@ const OtpModal = ({ email, otpSession, rememberDevice, onClose, onVerified, onRe
     );
 };
 
+const ForgotPasswordModal = ({ email, otpSession: initialOtpSession, onClose, onDone }) => {
+    const [step, setStep] = useState('otp'); // 'otp' | 'reset'
+
+    // OTP step state
+    const [digits, setDigits] = useState(['', '', '', '', '', '']);
+    const [verifying, setVerifying] = useState(false);
+    const [otpError, setOtpError] = useState('');
+    const [resendCooldown, setResendCooldown] = useState(RESEND_COOLDOWN);
+    const [resending, setResending] = useState(false);
+    const inputRefs = useRef([]);
+    const [verifiedOtp, setVerifiedOtp] = useState('');
+    const [resetToken, setResetToken] = useState(''); 
+
+    // otp_session returned by /forgot-password, refreshed on resend.
+    // Sent along with the code so the backend can tie the OTP to the
+    // right request instead of matching on email alone.
+    const [otpSession, setOtpSession] = useState(initialOtpSession || '');
+
+    // Reset step state
+    const [newPassword, setNewPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
+    const [showNewPassword, setShowNewPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+    const [resetError, setResetError] = useState('');
+    const [resetLoading, setResetLoading] = useState(false);
+
+    useEffect(() => {
+        if (step !== 'otp' || resendCooldown <= 0) return;
+        const t = setTimeout(() => setResendCooldown((s) => s - 1), 1000);
+        return () => clearTimeout(t);
+    }, [resendCooldown, step]);
+
+    useEffect(() => {
+        if (step === 'otp') inputRefs.current[0]?.focus();
+    }, [step]);
+
+    const focusBox = (index) => {
+        inputRefs.current[index]?.focus();
+        inputRefs.current[index]?.select();
+    };
+
+const submitOtp = useCallback(async (code) => {
+    if (code.length !== 6 || verifying) return;
+    setVerifying(true);
+    setOtpError('');
+    try {
+        const data = await apiFetch('/verify-forgot-password-otp', {
+            method: 'POST',
+            skipAuth: true,
+            body: JSON.stringify({ email, otp_session: otpSession, otp: code }),
+        });
+
+        if (data && data.status) {
+            const token = data.data?.reset_token || data.reset_token || '';
+            setResetToken(token);
+            setVerifiedOtp(code);
+            setStep('reset');
+        } else {
+            setOtpError((data && data.message) || 'Invalid code. Please try again.');
+            setDigits(['', '', '', '', '', '']);
+            inputRefs.current[0]?.focus();
+        }
+    } catch (err) {
+        setOtpError(err?.message || 'Invalid or expired code. Please try again.');
+        setDigits(['', '', '', '', '', '']);
+        inputRefs.current[0]?.focus();
+    } finally {
+        setVerifying(false);
+    }
+}, [email, otpSession, verifying]);
+
+    const handleChange = (index, rawValue) => {
+        const value = rawValue.replace(/\D/g, '');
+        if (value === '') {
+            setDigits((prev) => {
+                const next = [...prev];
+                next[index] = '';
+                return next;
+            });
+            return;
+        }
+
+        const chars = value.split('');
+        setDigits((prev) => {
+            const next = [...prev];
+            let i = index;
+            for (const ch of chars) {
+                if (i > 5) break;
+                next[i] = ch;
+                i += 1;
+            }
+
+            const filled = next.join('');
+            if (filled.length === 6) {
+                setTimeout(() => submitOtp(filled), 0);
+            } else {
+                setTimeout(() => focusBox(Math.min(i, 5)), 0);
+            }
+            return next;
+        });
+        setOtpError('');
+    };
+
+    const handleKeyDown = (index, e) => {
+        if (e.key === 'Backspace') {
+            if (digits[index] === '' && index > 0) {
+                focusBox(index - 1);
+            }
+        } else if (e.key === 'ArrowLeft' && index > 0) {
+            focusBox(index - 1);
+        } else if (e.key === 'ArrowRight' && index < 5) {
+            focusBox(index + 1);
+        }
+    };
+
+    const handlePaste = (e) => {
+        e.preventDefault();
+        const pasted = (e.clipboardData.getData('text') || '').replace(/\D/g, '').slice(0, 6);
+        if (!pasted) return;
+        const next = ['', '', '', '', '', ''];
+        pasted.split('').forEach((ch, i) => { next[i] = ch; });
+        setDigits(next);
+        setOtpError('');
+        if (pasted.length === 6) {
+            submitOtp(pasted);
+        } else {
+            focusBox(pasted.length);
+        }
+    };
+
+    const handleResend = async () => {
+        if (resendCooldown > 0 || resending) return;
+        setResending(true);
+        setOtpError('');
+        try {
+            const data = await apiFetch('/forgot-password', {
+                method: 'POST',
+                skipAuth: true,
+                body: JSON.stringify({ email }),
+            });
+
+            // Resending issues a fresh otp_session — swap it in so the
+            // next verify call is checked against the new one.
+            const nextOtpSession = data?.data?.otp_session;
+            if (nextOtpSession) {
+                setOtpSession(nextOtpSession);
+            }
+
+            setDigits(['', '', '', '', '', '']);
+            setResendCooldown(RESEND_COOLDOWN);
+            inputRefs.current[0]?.focus();
+            toast.success({ title: 'Code sent', message: 'A new code has been sent to your email.', duration: 3000 });
+        } catch (err) {
+            setOtpError(err?.message || 'Could not resend code. Please try again.');
+        } finally {
+            setResending(false);
+        }
+    };
+
+ const handleResetSubmit = async (e) => {
+    e.preventDefault();
+
+    if (newPassword === '' || confirmPassword === '') {
+        setResetError('Please fill in both fields.');
+        return;
+    }
+    if (newPassword !== confirmPassword) {
+        setResetError('Passwords do not match.');
+        return;
+    }
+
+    setResetError('');
+    setResetLoading(true);
+    try {
+        const data = await apiFetch('/reset-password', {
+            method: 'POST',
+            skipAuth: true,
+            body: JSON.stringify({
+                email,
+                reset_token: resetToken,
+                password: newPassword,
+                password_confirmation: confirmPassword,
+            }),
+        });
+
+        if (data && data.status) {
+            toast.success({
+                title: 'Password updated',
+                message: data.message || 'Your password has been reset successfully.',
+                duration: 4000,
+            });
+            onDone();
+        } else {
+            setResetError((data && data.message) || 'Could not reset password.');
+        }
+    } catch (err) {
+        setResetError(err?.message || 'Could not reset password.');
+    } finally {
+        setResetLoading(false);
+    }
+};
+
+    return (
+        <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
+            <div className="relative w-full max-w-[400px] bg-white rounded-2xl shadow-[0_30px_60px_rgba(0,0,0,0.25)] p-7">
+                <button
+                    type="button"
+                    onClick={onClose}
+                    className="absolute right-4 top-4 flex items-center justify-center rounded-full p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600 bg-transparent border-0 cursor-pointer"
+                    aria-label="Close"
+                >
+                    <CloseIcon sx={{ fontSize: 18 }} />
+                </button>
+
+                {step === 'otp' ? (
+                    <>
+                        <div className="flex h-11 w-11 items-center justify-center rounded-xl mb-4" style={{ background: '#EEF2FF' }}>
+                            <ShieldOutlinedIcon sx={{ fontSize: 22, color: COLOR_BLUE }} />
+                        </div>
+
+                        <h2 className="text-[20px] font-bold text-gray-900 m-0 mb-1.5">Verify it's you</h2>
+                        <p className="text-[13.5px] text-gray-500 m-0 mb-6 leading-relaxed">
+                            Enter the 6-digit code sent to <span className="font-semibold text-gray-700">{email}</span>
+                        </p>
+
+                        <div className="flex justify-between gap-2 mb-2" onPaste={handlePaste}>
+                            {digits.map((d, i) => (
+                                <input
+                                    key={i}
+                                    ref={(el) => (inputRefs.current[i] = el)}
+                                    value={d}
+                                    onChange={(e) => handleChange(i, e.target.value)}
+                                    onKeyDown={(e) => handleKeyDown(i, e)}
+                                    inputMode="numeric"
+                                    pattern="[0-9]*"
+                                    maxLength={6}
+                                    autoComplete={i === 0 ? 'one-time-code' : 'off'}
+                                    disabled={verifying}
+                                    className="w-[46px] h-[54px] text-center text-[20px] font-semibold rounded-xl border outline-none"
+                                    style={{
+                                        borderColor: otpError ? '#F0997B' : COLOR_BORDER,
+                                        background: verifying ? '#F7F8FA' : '#FFFFFF',
+                                        color: '#111827',
+                                    }}
+                                    onFocus={(e) => e.target.select()}
+                                />
+                            ))}
+                        </div>
+
+                        {otpError && (
+                            <p className="text-[12.5px] text-[#D85A30] m-0 mb-2">{otpError}</p>
+                        )}
+
+                        <Button
+                            variant="contained"
+                            size="large"
+                            fullWidth
+                            sx={submitBtnSx}
+                            disabled={verifying || digits.join('').length !== 6}
+                            onClick={() => submitOtp(digits.join(''))}
+                            startIcon={verifying ? <CircularProgress size={18} color="inherit" /> : null}
+                        >
+                            {verifying ? 'Verifying...' : 'Verify code'}
+                        </Button>
+
+                        <div className="text-center mt-5">
+                            <button
+                                type="button"
+                                onClick={handleResend}
+                                disabled={resendCooldown > 0 || resending}
+                                className="text-[13px] font-semibold bg-transparent border-0 cursor-pointer disabled:cursor-not-allowed"
+                                style={{ color: resendCooldown > 0 ? '#9CA3AF' : COLOR_BLUE }}
+                            >
+                                {resending
+                                    ? 'Sending...'
+                                    : resendCooldown > 0
+                                        ? `Resend code in ${resendCooldown}s`
+                                        : "Didn't get a code? Resend"}
+                            </button>
+                        </div>
+                    </>
+                ) : (
+                    <>
+                        <div className="flex h-11 w-11 items-center justify-center rounded-xl mb-4" style={{ background: '#EEF2FF' }}>
+                            <LockOutlinedIcon sx={{ fontSize: 22, color: COLOR_BLUE }} />
+                        </div>
+
+                        <h2 className="text-[20px] font-bold text-gray-900 m-0 mb-1.5">Set a new password</h2>
+                        <p className="text-[13.5px] text-gray-500 m-0 mb-6 leading-relaxed">
+                            Choose a new password for <span className="font-semibold text-gray-700">{email}</span>
+                        </p>
+
+                        <form onSubmit={handleResetSubmit} className="flex flex-col gap-4">
+                            <div className="relative w-full">
+                                <span className="absolute left-3.5 top-[27px] -translate-y-1/2 flex items-center justify-center pointer-events-none z-[2] text-gray-400">
+                                    <LockOutlinedIcon sx={{ fontSize: 19 }} />
+                                </span>
+                                <TextField
+                                    placeholder="New Password"
+                                    variant="outlined"
+                                    type={showNewPassword ? 'text' : 'password'}
+                                    value={newPassword}
+                                    onChange={(e) => {
+                                        setNewPassword(e.target.value);
+                                        setResetError('');
+                                    }}
+                                    fullWidth
+                                    autoComplete="new-password"
+                                    sx={textFieldSxPassword}
+                                />
+                                <button
+                                    type="button"
+                                    className="absolute right-3.5 top-[27px] -translate-y-1/2 flex items-center justify-center cursor-pointer z-[2] text-gray-400 bg-transparent border-0 p-0"
+                                    onClick={() => setShowNewPassword(!showNewPassword)}
+                                    tabIndex={-1}
+                                    aria-label={showNewPassword ? 'Hide password' : 'Show password'}
+                                >
+                                    {showNewPassword ? <Visibility sx={{ fontSize: 19 }} /> : <VisibilityOff sx={{ fontSize: 19 }} />}
+                                </button>
+                            </div>
+
+                            <div className="relative w-full">
+                                <span className="absolute left-3.5 top-[27px] -translate-y-1/2 flex items-center justify-center pointer-events-none z-[2] text-gray-400">
+                                    <LockOutlinedIcon sx={{ fontSize: 19 }} />
+                                </span>
+                                <TextField
+                                    placeholder="Confirm Password"
+                                    variant="outlined"
+                                    type={showConfirmPassword ? 'text' : 'password'}
+                                    value={confirmPassword}
+                                    onChange={(e) => {
+                                        setConfirmPassword(e.target.value);
+                                        setResetError('');
+                                    }}
+                                    fullWidth
+                                    autoComplete="new-password"
+                                    sx={textFieldSxPassword}
+                                />
+                                <button
+                                    type="button"
+                                    className="absolute right-3.5 top-[27px] -translate-y-1/2 flex items-center justify-center cursor-pointer z-[2] text-gray-400 bg-transparent border-0 p-0"
+                                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                    tabIndex={-1}
+                                    aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
+                                >
+                                    {showConfirmPassword ? <Visibility sx={{ fontSize: 19 }} /> : <VisibilityOff sx={{ fontSize: 19 }} />}
+                                </button>
+                            </div>
+
+                            {resetError && (
+                                <p className="text-[12.5px] text-[#D85A30] m-0 -mt-2">{resetError}</p>
+                            )}
+
+                            <Button
+                                variant="contained"
+                                size="large"
+                                fullWidth
+                                type="submit"
+                                sx={submitBtnSx}
+                                disabled={resetLoading}
+                                startIcon={resetLoading ? <CircularProgress size={18} color="inherit" /> : null}
+                            >
+                                {resetLoading ? 'Updating...' : 'Reset Password'}
+                            </Button>
+                        </form>
+                    </>
+                )}
+            </div>
+        </div>
+    );
+};
+
 const Login  = () => {
     const navigate = useNavigate();
 
@@ -380,6 +741,8 @@ const Login  = () => {
     const [passwordError, setPasswordError] = useState(false);
 
     const [forgotPassword, setForgotPassword] = useState(false);
+    const [forgotModalOpen, setForgotModalOpen] = useState(false);
+    const [forgotOtpSession, setForgotOtpSession] = useState('');
 
     const stored = getStoredOtpSession();
     const [otpModalOpen, setOtpModalOpen] = useState(!!stored.otpSession);
@@ -406,9 +769,19 @@ const Login  = () => {
         }
 
         if (userData) {
+            let roleValue = 'employee';
+            if (userData.role) {
+                if (typeof userData.role === 'string') {
+                    roleValue = userData.role.toLowerCase();
+                } else if (typeof userData.role === 'object') {
+                    roleValue = (userData.role.slug || userData.role.name || 'employee').toLowerCase();
+                }
+            }
+
             const normalizedUser = {
                 ...userData,
-                role: userData.role ? userData.role.toLowerCase() : 'employee',
+                role: roleValue,
+                roleDetails: (userData.role && typeof userData.role === 'object') ? userData.role : null,
                 name: [userData.first_name, userData.last_name].filter(Boolean).join(' ') || userData.email,
             };
             localStorage.setItem('crm_user', JSON.stringify(normalizedUser));
@@ -419,7 +792,7 @@ const Login  = () => {
 
         toast.success({title: 'Welcome back', message: data.message || 'Logged in successfully.', duration: 2500,});
 
-        clearOtpSession(); 
+        clearOtpSession();
         setOtpSession('');
         setOtpModalOpen(false);
         navigate('/dashboard');
@@ -432,12 +805,12 @@ const Login  = () => {
             body: JSON.stringify({
                 email,
                 password,
-                device_uuid: getDeviceUuid(),
+                device_uuid: getDeviceUUID(),
             }),
         });
 
         if (data && data.status && data.data?.requires_otp) {
-        
+
             saveOtpSession(data.data.otp_session, email);
             setOtpSession(data.data.otp_session);
             setOtpModalOpen(true);
@@ -501,20 +874,23 @@ const Login  = () => {
         setEmailError(false);
 
         setLoading(true);
-        apiFetch('/password/forgot', {
+        apiFetch('/forgot-password', {
             method: 'POST',
             skipAuth: true,
             body: JSON.stringify({ email }),
         })
             .then((data) => {
                 if (data && data.status) {
+                    // Capture the otp_session so it can be handed to the
+                    // modal and sent back with the verify/reset calls.
+                    setForgotOtpSession(data.data?.otp_session || '');
+
                     toast.success({
                         title: 'Check your inbox',
-                        message: data.message || 'A reset link has been sent to your email.',
-                        duration: 6000,
+                        message: data.message || 'A verification code has been sent to your email.',
+                        duration: 4000,
                     });
-                    setForgotPassword(false);
-                    setEmail('');
+                    setForgotModalOpen(true);
                 } else {
                     toast.error({
                         title: 'Request failed',
@@ -657,7 +1033,7 @@ const Login  = () => {
                                             setEmail('');
                                             setEmailError(false);
                                         }}
-                                    >                  
+                                    >
                                         Forgot password?
                                     </span>
                                 </div>
@@ -713,6 +1089,20 @@ const Login  = () => {
                     onClose={() => setOtpModalOpen(false)}
                     onVerified={handleLoginSuccess}
                     onResend={handleResendOtp}
+                />
+            )}
+
+            {forgotModalOpen && (
+                <ForgotPasswordModal
+                    email={email}
+                    otpSession={forgotOtpSession}
+                    onClose={() => setForgotModalOpen(false)}
+                    onDone={() => {
+                        setForgotModalOpen(false);
+                        setForgotPassword(false);
+                        setForgotOtpSession('');
+                        setEmail('');
+                    }}
                 />
             )}
         </div>

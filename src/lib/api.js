@@ -1,6 +1,9 @@
+import { clearSessionStorage } from "../utils/auth";
+
+
 // export const API_BASE = "https://qs233r41-8000.inc1.devtunnels.ms/api/v1";
 // export const API_BASE = "http://127.0.0.1:8000/api/v1";
-export const API_BASE = "https://brokerapi.dollartraq.com/api/v1";
+export const API_BASE = "http://192.168.20.28:8000/api/v1";
  
 export const SOCKET_BASE = API_BASE.replace(/^http/, "ws");
  
@@ -87,12 +90,13 @@ export async function apiFetch(path, options = {}) {
             throw new Error("Network error. Please check your connection and try again.");
         }
  
-        if (res.status === 401) {
-            localStorage.removeItem("crm_auth_token");
-            localStorage.removeItem("crm_user");
-            if (typeof window !== "undefined") window.location.href = "/login";
-            throw new Error("Unauthorized");
-        }
+if (res.status === 401) {
+    localStorage.removeItem("crm_auth_token");
+    localStorage.removeItem("crm_user");
+    document.cookie = "crm_auth_token=; Max-Age=0; path=/; SameSite=Lax";
+    if (typeof window !== "undefined") window.location.href = "/";
+    throw new Error("Unauthorized");
+}
  
         let responseText = "";
         try {
