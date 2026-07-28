@@ -1,16 +1,10 @@
 import React, { useState, useEffect } from 'react';
 
 import Grid from '@mui/material/Grid';
-import CircularProgress from '@mui/material/CircularProgress';
-import MenuItem from '@mui/material/MenuItem';
-import Select from '@mui/material/Select';
 import Skeleton from '@mui/material/Skeleton';
 
-import Search from '@mui/icons-material/Search';
-import Close from '@mui/icons-material/Close';
 import ChevronLeft from '@mui/icons-material/ChevronLeft';
 import ChevronRight from '@mui/icons-material/ChevronRight';
-import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import FiberManualRecordIcon from '@mui/icons-material/FiberManualRecord';
 
 import CarrierCard from '../../../components/CarrierCards';
@@ -18,7 +12,7 @@ import SearchOverlay from '../../../components/SearchOverlay';
 
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
-import Api from 'api/Api';
+import { apiFetch } from '../../../lib/api';
 
 const DEFAULT_FILTERS = {
     authority_active: false,
@@ -36,15 +30,20 @@ const DEFAULT_FILTERS = {
 
 const SEARCH_TYPES = ['mc', 'dot', 'company', 'phone', 'address', 'email', 'ein'];
 
-const SEARCH_FIELD_MAP = {
-    mc: ['mc_number'],
-    dot: ['dot_number'],
-    company: ['legal_name'],
-    phone: ['phone'],
-    address: ['address'],
-    email: ['email'],
-    ein: ['ein'],
+// Maps a search type to the query param the search API expects.
+// e.g. mc -> mc_number, dot -> dot_number, company -> company_name
+// Anything not in this map (free-text search) falls back to `q`.
+const SEARCH_PARAM_MAP = {
+    mc: 'mc_number',
+    dot: 'dot_number',
+    company: 'company_name',
+    phone: 'phone',
+    address: 'address',
+    email: 'email',
+    ein: 'ein',
 };
+
+const SEARCH_ENDPOINT = '/carrier/search';
 
 function CarrierCardSkeleton() {
 
@@ -125,21 +124,8 @@ function CarrierSearch() {
 
     function handleCarrierClick(carrier) {
 
-        const formData = new FormData();
-
-        if (accountToken) {
-
-            formData.append('account_token', accountToken);
-        }
-
-        formData.append('carrier_id', carrier.row_id);
-
-        formData.append('dot_no', carrier.dot_number);
-
-        Api.post('app/profile/carriers/searched/save', formData, function (data) {
-
-            navigate('/carriers/' + carrier.row_id);
-        });
+        // NOTE: "save searched carrier" API call removed for now — not needed currently.
+        navigate('/carriers/' + carrier.row_id);
     }
 
     useEffect(function () {
@@ -154,28 +140,27 @@ function CarrierSearch() {
 
     function loadFilters(accountToken) {
 
-        const formData = new FormData();
+        // const formData = new FormData();
 
-        if (accountToken) {
+        // if (accountToken) {
 
-            formData.append('account_token', accountToken);
-        }
+        //     formData.append('account_token', accountToken);
+        // }
 
-        Api.post('backend/carrier/search/filters', formData, function (data) {
+        // Api.post('backend/carrier/search/filters', formData, function (data) {
 
-                if (data.status) {
+        //         if (data.status) {
 
-                    setSortOptions(data.sort_options || []);
-                }
-            }
-        );
+        //             setSortOptions(data.sort_options || []);
+        //         }
+        //     }
+        // );
     }
 
     function runSearch(searchText, page, sortValue, type) {
 
         let pageNumber = page || 1;
         let searchedByKey = type || searchType;
-        let searchedByValue = (SEARCH_FIELD_MAP[searchedByKey] || SEARCH_FIELD_MAP['mc']).join(',');
 
         if (!searchText || searchText.trim() === '') {
             setCarriers([]);
@@ -190,11 +175,18 @@ function CarrierSearch() {
         setLoading(true);
 
         const params = new URLSearchParams();
+
+        const searchedByValue = SEARCH_PARAM_MAP[searchedByKey] || 'company_name';
         params.append('query', searchText);
         params.append('searched_by', searchedByValue);
-        params.append('sort', sortValue || sortBy);
-        params.append('page', pageNumber);
+
         params.append('per_page', 10);
+        params.append('page', pageNumber);
+
+        // NOTE: the search API doesn't currently accept a `sort` param
+        // (confirmed via Postman — none of the supported query examples
+        // include it), so it's left out for now to avoid the
+        // "selected sort is invalid" error.
 
         if (selectedRisk === 'Low') params.append('risk_low', 'true');
         if (selectedRisk === 'Medium') params.append('risk_medium', 'true');
@@ -202,27 +194,22 @@ function CarrierSearch() {
         if (authorityVerified === 'Yes') params.append('authority_verified', 'true');
         if (authorityVerified === 'No') params.append('authority_verified', 'false');
 
-        fetch(`https://laravel.dollartraq.com/api/carrier/search?${params}`, {
-            method: 'GET',
-            cache: 'no-store',
-            headers: {
-                Authorization: `Bearer ${import.meta.env.VITE_BARRIER_TOKEN}`
-            }
-        })
+        apiFetch(`${SEARCH_ENDPOINT}?${params.toString()}`)
             .then(function (res) {
-                return res.json();
-            })
-            .then(function (data) {
                 if (requestId !== searchRequestId.current) return;
 
-                setCarriers(data.data || []);
-                setTotal(data.total || (data.data || []).length);
-                setCurrentPage(pageNumber);
-                setLastPage(data.last_page || 1);
+                const payload = res || null;
+
+                setCarriers(payload && Array.isArray(payload.data) ? payload.data : []);
+                setTotal(payload ? payload.total || 0 : 0);
+                setCurrentPage(payload ? payload.current_page || pageNumber : pageNumber);
+                setLastPage(payload ? payload.last_page || 1 : 1);
             })
             .catch(function (err) {
                 if (requestId !== searchRequestId.current) return;
                 console.log(err);
+                setCarriers([]);
+                setTotal(0);
             })
             .finally(function () {
                 if (requestId !== searchRequestId.current) return;
@@ -311,55 +298,6 @@ function CarrierSearch() {
                 <Grid size={12}>
 
                     <div className='min-h-screen p-3 md:p-4 lg:p-6'>
-
-                        {/* <div className='max-w-[1100px] mx-auto mb-[30px]'>
-
-                            <div className='relative'>
-
-                                <Search
-                                    onClick={() => setOverlayOpen(true)}
-                                    className='absolute left-4 top-1/2 -translate-y-1/2 text-[20px] text-gray-400 cursor-pointer'
-                                />
-
-                                <input
-                                    type='text'
-                                    value={query}
-                                    onChange={function (event) {
-
-                                        setQuery(event.target.value);
-                                    }}
-                                    onKeyDown={handleKeyDown}
-                                    placeholder='Search MC, DOT, Company, and Phone'
-                                    style={{ width: '100%', padding: '14px 140px 14px 48px', borderRadius: '12px', border: '1px solid #e5e7eb', fontSize: 15, color: '#111827', outline: 'none', background: '#fff', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}
-                                />
-
-                                <button
-                                    onClick={function () {
-
-                                        runSearch(query, 1, sortBy, searchType);
-                                    }}
-                                    className='absolute right-2 md:right-3 top-1/2 -translate-y-1/2 bg-blue-500 text-white px-3 md:px-4 py-2 rounded-lg text-sm'
-                                >
-                                    Search
-                                </button>
-
-                                {query !== '' && (
-
-                                    <Close
-                                        onClick={handleClearSearch}
-                                        className='absolute right-[85px] md:right-[95px] top-1/2 -translate-y-1/2 cursor-pointer text-gray-400'
-                                    />
-                                )}
-
-                            </div>
-
-                            {query !== '' && (
-                                <div className='mt-2 text-xs text-gray-400 uppercase tracking-wide font-semibold'>
-                                    Searching by: {searchType}
-                                </div>
-                            )}
-
-                        </div> */}
 
                         <div className='max-w-[1100px] mx-auto'>
 

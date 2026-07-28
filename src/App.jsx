@@ -7,7 +7,8 @@ import TrackShipmentStep2 from './pages/app/trackshipment/step2'
 import SearchVet from './pages/app/SearchVet/SearchVet'
 import RiskAlerts from './pages/app/riskalert/RiskAlerts'
 import LoadSearch from './pages/app/loadsearch/LoadSearch'
-// import CarrierSearch from './pages/app/carriers/CarrierSearch'
+import CarrierSearch from './pages/app/carriers/CarrierSearch'
+import CarrierProfile from './pages/app/carriers/CarrierProfile'
 
 import UsersList from './pages/app/users/UsersList'
 
@@ -50,7 +51,10 @@ function App() {
             <Route path ="/settings/carrier" element={<CarrierSettings/>} />
             <Route path="/subscribe" element={<Subscription />} />
             <Route path ="/carrier-questions" element={<CarrierQuestions />}/>
-            {/* <Route path="/carriers/search" element={<CarrierSearch />} /> */}
+
+            <Route path="/carriers/search" element={<CarrierSearch />} />
+            <Route path="/carriers/:row_id" element={<CarrierProfile />} />
+
             <Route path ="/profile/scoring-weights" element={<ScoringWeights />}/>
 
             <Route path="*" element={<Navigate to="/" replace />} />

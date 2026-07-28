@@ -1,23 +1,23 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 
-import CarrierProfileSection from '@/profileComponents/CarrierProfileSection';
-import RiskFactorCard from '@/profileComponents/RiskFactorCard';
+import CarrierProfileSection from '../../../profileComponents/CarrierProfileSection'
+import RiskFactorCard from '../../../profileComponents/RiskFactorCard';
 
-import SafetyPerformance from '@/profileComponents/SafetyPerformance';
-import FleetSummary from '@/profileComponents/FleetSummary';
-import InsuranceCard from '@/profileComponents/InsuranceCard';
-import HighFrequencyLanes from '@/profileComponents/HighFrequencyLanes';
-import OperationalObservations from '@/profileComponents/OperationalObservations';
-import SafetyIntelligenceConsole from '@/profileComponents/safetyIntelligence/SafetyIntelligenceConsole';
-import FleetDetails from '@/profileComponents/FleetDetails';
-import LoadHistory from '@/profileComponents/LoadHistory';
-import CompanySnapshot from '@/profileComponents/CompanySnapShot';
+import SafetyPerformance from '../../../profileComponents/SafetyPerformance';
+import FleetSummary from '../../../profileComponents/FleetSummary';
+import InsuranceCard from '../../../profileComponents/InsuranceCard';
+import HighFrequencyLanes from '../../../profileComponents/HighFrequencyLanes';
+// import OperationalObservations from '../../../profileComponents/OperationalObservations';
+import SafetyIntelligenceConsole from '../../../profileComponents/safetyIntelligence/SafetyIntelligenceConsole';
+import FleetDetails from '../../../profileComponents/FleetDetails';
+import LoadHistory from '../../../profileComponents/LoadHistory';
+import CompanySnapshot from '../../../profileComponents/CompanySnapShot';
 
-import CompanyAssociationsView from '@/profileComponents/CompanyAssociationsView';
-import EquipmentInsightsView from '@/profileComponents/EquipmentInsightsView';
-import IndustryBenchMarksView from '@/profileComponents/IndustryBenchMarksView';
-import ContactHistoryView from '@/profileComponents/ContactHistoryView';
+import CompanyAssociationsView from '../../../profileComponents/CompanyAssociationsView';
+import EquipmentInsightsView from '../../../profileComponents/EquipmentInsightsView';
+import IndustryBenchMarksView from '../../../profileComponents/IndustryBenchMarksView';
+import ContactHistoryView from '../../../profileComponents/ContactHistoryView';
 
 import DescriptionOutlined from '@mui/icons-material/DescriptionOutlined';
 import LocationOnOutlined from '@mui/icons-material/LocationOnOutlined';
@@ -26,13 +26,11 @@ import AlternateEmail from '@mui/icons-material/AlternateEmail';
 import Language from '@mui/icons-material/Language';
 import DeleteOutline from '@mui/icons-material/DeleteOutlined';
 
-import Main from '@/components/Main';
-
 import Skeleton from '@mui/material/Skeleton';
 
-import Api from '@/api/Api';
+// import Api from '../../api/Api';
+import { apiFetch } from '../../../lib/api';
 
-import Navigation from '@/components/Navigation';
 
 
 import {Add,Bolt,CheckCircle,WarningAmber,LocalShipping,Groups,History,InfoOutlined,Timeline,Assessment} from '@mui/icons-material';
@@ -71,8 +69,6 @@ function CarrierProfile() {
     import.meta.env.VITE_ACCOUNT_TOKEN
 );
 
-const canViewSensitiveData = Navigation.can('view_sensitive_data');
-const canSendInvitation = Navigation.can('send_approved_invitations');
 
   
 const [initing, setIniting] = useState(false);
@@ -129,44 +125,7 @@ function showToast(type, title, message, duration = 4000) {
 
         setError('');
 
-        fetch(
-
-            `https://laravel.dollartraq.com/api/carrier/detail/${row_id}`,
-
-            {
-                method: 'POST',
-
-                headers: {
-                    Authorization: `Bearer ${import.meta.env.VITE_BARRIER_TOKEN}`
-                }
-            }
-
-        )
-
-            .then(function (res) {
-
-                if (!res.ok) {
-
-                    throw new Error(`Server error: ${res.status}`);
-
-                }
-
-                const contentType = res.headers.get('content-type');
-
-                if (
-                    !contentType ||
-                    !contentType.includes('application/json')
-                ) {
-
-                    throw new Error(
-                        'Server returned non-JSON response'
-                    );
-
-                }
-
-                return res.json();
-
-            })
+        apiFetch(`/carriers/${row_id}`)
 
             .then(function (data) {
 
@@ -185,76 +144,75 @@ function showToast(type, title, message, duration = 4000) {
 
                 }
 
-    setCarrier(carrierData);
+                setCarrier(carrierData);
 
-fetch(
-    `${import.meta.env.VITE_ROOT_PROD}/app/profile/carriers/shortlisted/listv2`,
-    {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${accountToken}`
-        },
-        body: JSON.stringify({
-            account_token: accountToken
-        })
-    }
-)
-    .then(res => res.json())
-    .then(shortlistData => {
+                // fetch(
+                //     `${import.meta.env.VITE_ROOT_PROD}/app/profile/carriers/shortlisted/listv2`,
+                //     {
+                //         method: 'POST',
+                //         headers: {
+                //             'Content-Type': 'application/json',
+                //             Authorization: `Bearer ${accountToken}`
+                //         },
+                //         body: JSON.stringify({
+                //             account_token: accountToken
+                //         })
+                //     }
+                // )
+                //     .then(res => res.json())
+                //     .then(shortlistData => {
+                //
+                //         const records = shortlistData?.records || [];
+                //
+                //         const matchedRecord = records.find(function (item) {
+                //             return (
+                //                 item?.carrier_id?.toString() === row_id?.toString()
+                //             );
+                //         });
+                //
+                //         setIsShortlisted(!!matchedRecord);
+                //
+                //     })
+                //     .catch(function (err) {
+                //         console.log('Shortlist status check failed', err);
+                //     });
 
-        const records = shortlistData?.records || [];
-
-        const matchedRecord = records.find(function (item) {
-            return (
-                item?.carrier_id?.toString() === row_id?.toString()
-            );
-        });
-
-        setIsShortlisted(!!matchedRecord);
-
-    })
-    .catch(function (err) {
-        console.log('Shortlist status check failed', err);
-    });
-
-fetch(
-    `https://laravel.dollartraq.com/api/handle/broker/carrier/connect/list`,
-    {
-        method: 'Post',
-        headers: {
-            Authorization: `Bearer ${accountToken}`,
-        }
-    }
-)
-    .then(res => res.json())
-
-    .then(connectData => {
-
-        const records =
-            connectData?.records ||
-            connectData?.data ||
-            [];
-
-        const alreadyConnected = records.some(function (item) {
-
-           
-            return (
-                item?.receiver?.toString() === row_id?.toString() ||
-                item?.receiver_id?.toString() === row_id?.toString() ||
-                item?.carrier_id?.toString() === row_id?.toString()
-            );
-
-        });
-
-        setIsConnected(alreadyConnected);
-
-    })
-    .catch(function (err) {
-
-        console.log('Connection status check failed', err);
-
-    });
+                // fetch(
+                //     `https://laravel.dollartraq.com/api/handle/broker/carrier/connect/list`,
+                //     {
+                //         method: 'Post',
+                //         headers: {
+                //             Authorization: `Bearer ${accountToken}`,
+                //         }
+                //     }
+                // )
+                //     .then(res => res.json())
+                //
+                //     .then(connectData => {
+                //
+                //         const records =
+                //             connectData?.records ||
+                //             connectData?.data ||
+                //             [];
+                //
+                //         const alreadyConnected = records.some(function (item) {
+                //
+                //             return (
+                //                 item?.receiver?.toString() === row_id?.toString() ||
+                //                 item?.receiver_id?.toString() === row_id?.toString() ||
+                //                 item?.carrier_id?.toString() === row_id?.toString()
+                //             );
+                //
+                //         });
+                //
+                //         setIsConnected(alreadyConnected);
+                //
+                //     })
+                //     .catch(function (err) {
+                //
+                //         console.log('Connection status check failed', err);
+                //
+                //     });
 
             })
 
@@ -279,177 +237,178 @@ fetch(
 
     function addToPreferred() {
 
-        if (!row_id) return;
-
-        setShortlisting(true);
-
-        setSuccessMessage('');
-        setErrorMessage('');
-
-        fetch(
-            `${import.meta.env.VITE_ROOT_PROD}/app/profile/carriers/shortlisted/save`,
-            {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${accountToken}`,
-                },
-                body: JSON.stringify({
-                    carrier_id: row_id
-                })
-            }
-        )
-
-            .then(function (res) {
-
-                if (!res.ok) {
-
-                    throw new Error('Failed to shortlist');
-
-                }
-
-                return res.json();
-
-            })
-
-            .then(function (data) {
-
-                console.log('Shortlist response:', data);
-
-                setIsShortlisted(true);
-
-                setSuccessMessage(
-                    data?.message ||
-                    'Carrier added to preferred successfully.'
-                );
-
-                setErrorMessage('');
-
-            })
-
-            .catch(function (err) {
-
-                console.error('Shortlist error:', err);
-
-                setErrorMessage(
-                    err?.message ||
-                    'Failed to add carrier to preferred.'
-                );
-
-                setSuccessMessage('');
-
-            })
-
-            .finally(function () {
-
-                setShortlisting(false);
-                setTimeout(function () {
-
-                    setSuccessMessage('');
-                    setErrorMessage('');
-
-                }, 4000);
-
-
-            });
+        // if (!row_id) return;
+        //
+        // setShortlisting(true);
+        //
+        // setSuccessMessage('');
+        // setErrorMessage('');
+        //
+        // fetch(
+        //     `${import.meta.env.VITE_ROOT_PROD}/app/profile/carriers/shortlisted/save`,
+        //     {
+        //         method: 'POST',
+        //         headers: {
+        //             'Content-Type': 'application/json',
+        //             Authorization: `Bearer ${accountToken}`,
+        //         },
+        //         body: JSON.stringify({
+        //             carrier_id: row_id
+        //         })
+        //     }
+        // )
+        //
+        //     .then(function (res) {
+        //
+        //         if (!res.ok) {
+        //
+        //             throw new Error('Failed to shortlist');
+        //
+        //         }
+        //
+        //         return res.json();
+        //
+        //     })
+        //
+        //     .then(function (data) {
+        //
+        //         console.log('Shortlist response:', data);
+        //
+        //         setIsShortlisted(true);
+        //
+        //         setSuccessMessage(
+        //             data?.message ||
+        //             'Carrier added to preferred successfully.'
+        //         );
+        //
+        //         setErrorMessage('');
+        //
+        //     })
+        //
+        //     .catch(function (err) {
+        //
+        //         console.error('Shortlist error:', err);
+        //
+        //         setErrorMessage(
+        //             err?.message ||
+        //             'Failed to add carrier to preferred.'
+        //         );
+        //
+        //         setSuccessMessage('');
+        //
+        //     })
+        //
+        //     .finally(function () {
+        //
+        //         setShortlisting(false);
+        //         setTimeout(function () {
+        //
+        //             setSuccessMessage('');
+        //             setErrorMessage('');
+        //
+        //         }, 4000);
+        //
+        //
+        //     });
 
     }
 
 function removeFromShortlist() {
 
-    setRemovingShortlist(true);
-    setSuccessMessage('');
-    setErrorMessage('');
-
-    fetch(
-        `${import.meta.env.VITE_ROOT_PROD}/app/profile/carriers/removev2`,
-        {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                Authorization: `Bearer ${accountToken}`,
-            },
-            body: JSON.stringify({
-                carrier_id: row_id
-            })
-        }
-    )
-        .then(function (res) {
-            return res.json();
-        })
-        .then(function (data) {
-
-            if (data?.status === false) {
-
-                setErrorMessage(
-                    data?.message ||
-                    'Failed to remove carrier from preferred.'
-                );
-
-                return;
-            }
-
-            setIsShortlisted(false);
-
-            setSuccessMessage(
-                data?.message ||
-                'Carrier removed from preferred successfully.'
-            );
-
-        })
-        .catch(function (err) {
-
-            console.error('Remove shortlist error:', err);
-
-            setErrorMessage(
-                err?.message ||
-                'Failed to remove carrier from preferred.'
-            );
-
-        })
-        .finally(function () {
-
-            setRemovingShortlist(false);
-
-            setTimeout(function () {
-                setSuccessMessage('');
-                setErrorMessage('');
-            }, 4000);
-
-        });
+    // setRemovingShortlist(true);
+    // setSuccessMessage('');
+    // setErrorMessage('');
+    //
+    // fetch(
+    //     `${import.meta.env.VITE_ROOT_PROD}/app/profile/carriers/removev2`,
+    //     {
+    //         method: 'POST',
+    //         headers: {
+    //             'Content-Type': 'application/json',
+    //             Authorization: `Bearer ${accountToken}`,
+    //         },
+    //         body: JSON.stringify({
+    //             carrier_id: row_id
+    //         })
+    //     }
+    // )
+    //     .then(function (res) {
+    //         return res.json();
+    //     })
+    //     .then(function (data) {
+    //
+    //         if (data?.status === false) {
+    //
+    //             setErrorMessage(
+    //                 data?.message ||
+    //                 'Failed to remove carrier from preferred.'
+    //             );
+    //
+    //             return;
+    //         }
+    //
+    //         setIsShortlisted(false);
+    //
+    //         setSuccessMessage(
+    //             data?.message ||
+    //             'Carrier removed from preferred successfully.'
+    //         );
+    //
+    //     })
+    //     .catch(function (err) {
+    //
+    //         console.error('Remove shortlist error:', err);
+    //
+    //         setErrorMessage(
+    //             err?.message ||
+    //             'Failed to remove carrier from preferred.'
+    //         );
+    //
+    //     })
+    //     .finally(function () {
+    //
+    //         setRemovingShortlist(false);
+    //
+    //         setTimeout(function () {
+    //             setSuccessMessage('');
+    //             setErrorMessage('');
+    //         }, 4000);
+    //
+    //     });
 }
 
 const handleConnect = async () => {
-    setConnecting(true);
-    try {
-        const response = await fetch(
-            `https://laravel.dollartraq.com/api/handle/backend/carriers/connect/request`,
-            {
-                method: "POST",
-                headers: {
-                    Authorization: `Bearer 53|N936trVmuQw3lkyiwQy28yxdeCtnu5hEOBiHW9IU57bb2cff`,
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                    receiver: row_id,
-                }),
-            }
-        );
 
-        const data = await response.json();
-
-        console.log(data);
-
-if (response.ok) {
-    setIsConnected(true);
-    showToast('success', 'Connection request sent', 'The carrier has been notified. You can proceed to payment.');
-} else {
-    showToast('error', "Couldn't send request", data.message || 'Something went wrong.');
-}
-} catch (err) {
-    console.error(err);
-    showToast('error', "Couldn't send request", 'Something went wrong. Try again.');
-}
+    // setConnecting(true);
+    // try {
+    //     const response = await fetch(
+    //         `https://laravel.dollartraq.com/api/handle/backend/carriers/connect/request`,
+    //         {
+    //             method: "POST",
+    //             headers: {
+    //                 Authorization: `Bearer 53|N936trVmuQw3lkyiwQy28yxdeCtnu5hEOBiHW9IU57bb2cff`,
+    //                 "Content-Type": "application/json",
+    //             },
+    //             body: JSON.stringify({
+    //                 receiver: row_id,
+    //             }),
+    //         }
+    //     );
+    //
+    //     const data = await response.json();
+    //
+    //     console.log(data);
+    //
+    // if (response.ok) {
+    //     setIsConnected(true);
+    //     showToast('success', 'Connection request sent', 'The carrier has been notified. You can proceed to payment.');
+    // } else {
+    //     showToast('error', "Couldn't send request", data.message || 'Something went wrong.');
+    // }
+    // } catch (err) {
+    //     console.error(err);
+    //     showToast('error', "Couldn't send request", 'Something went wrong. Try again.');
+    // }
 };
        
     useEffect(function () {
@@ -623,7 +582,7 @@ if (response.ok) {
 
         return (
 
-            <Main active_page="carrier_profile" page="carrier_profile">
+            <>
 
                 <div className='min-h-screen bg-[#F6F7F0] p-[14px] sm:p-[20px] xl:p-[32px]'>
 
@@ -769,7 +728,7 @@ if (response.ok) {
 
                 </div>
 
-            </Main>
+            </>
 
         );
 
@@ -884,7 +843,7 @@ if (response.ok) {
     return (
 
 
-       <Main active_page="carrier_profile" page="carrier_profile" error_message={errorMessage} success_message={successMessage}>
+       <>
 
         <div className='min-h-screen bg-[#F6F7F0] p-[14px] sm:p-[20px] xl:p-[32px]'>
 
@@ -938,7 +897,7 @@ if (response.ok) {
                     },
                     {
                         label: 'EIN#',
-                        value: canViewSensitiveData ? (carrier?.fmcsa_data?.ein ?? 'NA') : '••••••••'
+                        value: carrier?.fmcsa_data?.ein ?? 'NA'
                     },
                     {
                         label: 'DUNS#',
@@ -963,23 +922,21 @@ if (response.ok) {
         disabled: removingShortlist,
         loading: removingShortlist
     },
-    canSendInvitation
-        ? (!isConnected
-            ? {
-                label: 'Connect',
-                icon: <Bolt className='!text-[18px]' />,
-                variant: 'primary',
-                onClick: () => handleConnect(row_id),
-                disabled: connecting,
-                loading: connecting
-            }
-            : {
-                label: 'Pay Now / Connected',
-                icon: <CheckCircle />,
-                variant: 'primary',
-                onClick: () => navigate('/payment')
-            })
-        : null
+    !isConnected
+        ? {
+            label: 'Connect',
+            icon: <Bolt className='!text-[18px]' />,
+            variant: 'primary',
+            onClick: () => handleConnect(row_id),
+            disabled: connecting,
+            loading: connecting
+        }
+        : {
+            label: 'Pay Now / Connected',
+            icon: <CheckCircle />,
+            variant: 'primary',
+            onClick: () => navigate('/payment')
+        }
 ].filter(Boolean)}
             />
 
@@ -1248,9 +1205,9 @@ if (response.ok) {
                             data-section='OPERATIONAL OBSERVATIONS'
                         >
 
-                            <OperationalObservations
+                            {/* <OperationalObservations
                                 data={carrier}
-                            />
+                            /> */}
 
                         </section>
 
@@ -1343,7 +1300,7 @@ if (response.ok) {
     </div>
 )}
 
-       </Main>
+       </>
 
     );
 }
